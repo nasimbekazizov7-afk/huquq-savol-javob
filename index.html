@@ -269,6 +269,99 @@ textarea{width:100%;min-height:64px;resize:vertical;border:1px solid var(--line)
 .note{font-size:13px;color:var(--muted);background:var(--sunk);border-radius:10px;padding:10px 12px}
 h2{font-family:var(--f-display);font-size:20px;margin:0;text-wrap:balance}
 h3{font-size:15px;margin:0 0 6px}
+/* demo hisoblagich, qulf */
+.dm{font-size:11px;color:var(--know);background:var(--know-soft);border-radius:6px;padding:0 5px;margin-left:4px;white-space:nowrap}
+.lockb{width:20px;flex:none;text-align:center;cursor:pointer;font-size:14px}
+/* Darsliklar ⇄ Qonunchilik hujjatlari bloklari */
+.tblocks{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;gap:6px;margin:12px 0 0}
+.tblk{--c:#0f7a5c;border:2px solid var(--c);background:color-mix(in srgb,var(--c) 8%,var(--surface));color:var(--c);border-radius:14px;padding:12px 10px;cursor:pointer;display:flex;flex-direction:column;gap:2px;text-align:left}
+.tblk b{font-size:16px;line-height:1.25}.tblk small{font-size:12px;font-weight:600;opacity:.85}
+.tblk.tb-q{--c:#9b2c3a}
+.tblk[aria-pressed="true"]{background:var(--c);color:#fff;box-shadow:0 4px 12px color-mix(in srgb,var(--c) 30%,transparent)}
+.tarrow{align-self:center;font-size:22px;color:var(--muted);font-weight:700}
+.tlist{border:2px solid #0f7a5c;border-top-width:6px;border-radius:0 0 14px 14px;padding:8px;margin-top:-2px;background:color-mix(in srgb,#0f7a5c 4%,var(--surface))}
+.tlist.tl-q{border-color:#9b2c3a;background:color-mix(in srgb,#9b2c3a 4%,var(--surface))}
+.trow.allrow.sm{padding:8px 8px;margin-bottom:6px;border-width:1px}.trow.allrow.sm .tt{font-size:14px}
+.tlist .srcrow .tt b{font-weight:600}
+/* mini banner va to‘liq kirish oynasi */
+.minilock.ok{background:var(--know-soft);color:var(--know);font-weight:600;padding:8px 12px}
+.minilock .pend{margin-top:6px;font-weight:600;color:var(--part)}
+.minilock .buyb{width:100%;margin-top:8px}
+.buybox h2{font-size:18px;padding-right:40px}.buybox p{margin:0}
+.tars{display:flex;flex-direction:column;gap:6px}
+.tar{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer}
+.tar.on{border-color:var(--accent);background:var(--accent-soft)}
+.tar span{display:flex;flex-direction:column}.tar small{color:var(--muted)}
+.fl{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600}
+.fl input[type=tel]{padding:10px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:16px;background:var(--surface);color:var(--fg)}
+.fl small.ok{color:var(--know)}
+.err{background:var(--dont-soft);color:var(--dont);border-radius:10px;padding:8px 10px;font-size:13px}
+/* statistika: ochilib-yopiladigan */
+details.stsrc,details.stch{border:1px solid var(--line);border-radius:10px;margin-top:6px;padding:0 8px;background:var(--surface)}
+details.stch{margin-left:6px}
+details.stsrc>summary,details.stch>summary{cursor:pointer;list-style:none}
+details.stsrc>summary::-webkit-details-marker,details.stch>summary::-webkit-details-marker{display:none}
+details.stsrc>summary>span:first-child::before,details.stch>summary>span:first-child::before{content:"▸ ";color:var(--muted)}
+details[open].stsrc>summary>span:first-child::before,details[open].stch>summary>span:first-child::before{content:"▾ "}
+details.stch .chgo{margin-top:0;padding-top:2px}
+/* ===== Telegram Mini App: ixcham, och moviy fon ===== */
+body.mini{--bg:#e7f2fc;--sunk:#dbe9f6;--line:#c9dbec;--accent:#0d5ea8;--accent-soft:#d6e8f8;font-size:13.5px;padding:0 8px}
+body.mini header.top{padding-block:6px 4px;gap:6px;flex-wrap:nowrap}
+body.mini .brand b{font-size:15px;font-family:var(--f-body);font-weight:700;color:var(--accent)}
+body.mini .script button{padding:3px 8px;font-size:11.5px}
+body.mini .hdr-r{gap:4px;flex-wrap:nowrap}
+body.mini .panel{padding:10px;border-radius:12px}
+body.mini .sech{font-size:17px;margin-bottom:6px}
+body.mini .lbl{font-size:11px;margin-bottom:5px}
+body.mini .sum{padding:8px 10px;border-radius:12px;gap:6px}
+body.mini .sum .big b{font-size:24px}body.mini .sum .big span{font-size:13px}
+body.mini .sum .sumhint{font-size:11px}
+body.mini .sum .btn.go{font-size:14px;padding:8px 16px;border-radius:10px}
+body.mini .trow{padding:6px 4px;gap:8px}
+body.mini .trow .tt{font-size:12.5px}body.mini .trow .tt small{font-size:11px}
+body.mini .trow input{width:17px;height:17px}
+body.mini .trow.allrow{padding:8px}body.mini .trow.allrow .tt{font-size:14px}
+body.mini .srcd .trow .tt{font-size:12px}body.mini .srcd .trow{padding:4px}
+body.mini .srcd .book-t{font-size:15px}body.mini .srcd .book-s,body.mini .srcd .book-a{font-size:11.5px}
+body.mini .plate-note{font-size:12px;padding:8px 10px}
+body.mini .srcd .chap .tt{font-size:12.5px}
+body.mini .link{font-size:12px}
+body.mini .cnt{font-size:12px}
+body.mini .tblk{padding:8px;border-radius:12px}body.mini .tblk b{font-size:13.5px}body.mini .tblk small{font-size:11px}
+body.mini .tarrow{font-size:18px}
+body.mini .chip{padding:5px 10px;font-size:12.5px}
+body.mini .seg button{font-size:12.5px;padding:8px 4px}
+body.mini .btn{padding:7px 12px;font-size:13px}
+body.mini .selbar{flex-wrap:nowrap}body.mini .selbar .btn{padding:6px 6px;font-size:11.5px;white-space:nowrap}
+body.mini .trow.allrow .tt small{font-size:10.5px}
+body.mini .sum .big b{font-size:22px}
+body.mini .srcd .chap .tt small{font-size:10.5px}
+body.mini .srcwrap .srcd{padding:4px 8px 10px}
+body.mini details.chap{padding:2px 6px}
+body.mini .les-list{margin-left:10px;padding-left:8px}
+body.mini .tlist{padding:6px}
+body.mini .buybox h2{font-size:16px}
+body.mini .mbox{padding:16px 14px 14px;gap:10px}
+body.mini .mx{width:34px;height:34px;font-size:15px}
+body.mini .tar{padding:7px 10px}
+body.mini .minilock{font-size:12.5px;padding:8px 10px}
+body.mini .navcard{padding:10px 12px}body.mini .navcard b{font-size:14px}
+body.mini .cardview{gap:5px}
+body.mini .cardbar .btn,body.mini .btn.finish{padding:6px 12px;font-size:13px}
+body.mini .progress{font-size:12px}
+body.mini .bar{margin-bottom:4px}
+body.mini .cardview .card{padding:12px;gap:10px;border-radius:12px}
+body.mini .qtext{font-size:17px}
+body.mini .answer .a{font-size:15px}
+body.mini .passage p{font-size:14px}
+body.mini .grade button{padding:9px 4px}
+body.mini .qnav .btn{padding:6px 8px;font-size:12.5px}
+body.mini .cardview .qpanel{max-height:13vh;padding:6px 8px}
+body.mini .qgrid button{min-width:30px;height:26px;font-size:11.5px}
+body.mini .qlegend{font-size:10.5px}
+body.mini .mrow{font-size:12.5px}
+body.mini .tile b{font-size:19px}
+body.mini #view{padding-bottom:6px}
 </style>
 
 <div class="wrap">
@@ -307,7 +400,9 @@ const srcChapters = s => s.chapters.map(id=>CHMAP[id]).filter(Boolean);
 const srcKeys = s => srcChapters(s).flatMap(c=>c.lessons).flatMap(l=>Object.keys(l.sections).map(k=>l.id+":"+k));
 const SRC_OF_L = {}; SOURCES.forEach(s=>srcChapters(s).forEach(c=>c.lessons.forEach(l=>SRC_OF_L[l.id]=s)));
 const isLaw = s => !!s && s.type==="qonun";
-const srcName = s => s ? (isLaw(s) ? s.title : "“"+s.title+"”"+(s.grade?" · "+s.grade:"")) : "";
+const srcName = s => s ? (isLaw(s) ? s.title : "“"+s.title+"”"+(s.grade?" · "+s.grade+" darsligi asosida":"")) : "";
+const srcCite = s => s ? (isLaw(s) ? s.title : "“"+s.title+"”"+(s.grade?" · "+s.grade+" darsligi":"")) : "";
+const FULL = BANK.full||null;   // demo: har bir bo‘limdagi haqiqiy savollar soni [oddiy, murakkab]
 const KORA = s => isLaw(s) ? ({Kodeks:"Kodeksga ko‘ra",Nizom:"Nizomga ko‘ra",Farmon:"Farmonga ko‘ra",Konstitutsiya:"Konstitutsiyaga ko‘ra"}[s.kind]||"Qonunga ko‘ra") : "Darslikka ko‘ra";
 const IMGS = BANK.images||{};
 const imgHTML = q => q.img&&IMGS[q.img] ? `<figure class="qimg" title="Kattalashtirish">${IMGS[q.img]}<figcaption>${TE(/scheme/.test(q.img)?"Ilovadagi sxematik tasvir asosida (4-modda oʻlchamlari) · kattalashtirish uchun bosing":"Ilovadagi rangli tasvir asosida (4-modda) · kattalashtirish uchun bosing")}</figcaption></figure>` : "";
@@ -322,13 +417,19 @@ const DAY=86400000, INTERVALS=[0,1,2,4,8,16,32];
 /* ---------- Lotin → Kirill ---------- */
 const AP="[ʻ‘'`ʼ]";
 const MAP={a:"а",b:"б",d:"д",e:"е",f:"ф",g:"г",h:"ҳ",i:"и",j:"ж",k:"к",l:"л",m:"м",n:"н",o:"о",p:"п",q:"қ",r:"р",s:"с",t:"т",u:"у",v:"в",x:"х",y:"й",z:"з",c:"с",w:"в"};
-const RX=new RegExp("o"+AP+"|g"+AP+"|sh|ch|yo(?!"+AP+")|yu|ya|ye|ts|’|[a-z]","gi");
-const MON={"январ":"январь","феврал":"февраль","апрел":"апрель","июн":"июнь","июл":"июль","сентабр":"сентябрь","октабр":"октябрь","ноябр":"ноябрь","декабр":"декабрь"};
+const RX=new RegExp("s[’ʼ'`]h|o"+AP+"|g"+AP+"|sh|ch|yo(?!"+AP+")|yu|ya|ye|ts|’|[a-z]","gi");
+const MON={"январ":"январь","феврал":"февраль","апрел":"апрель","июн":"июнь","июл":"июль","сентябр":"сентябрь","октябр":"октябрь","ноябр":"ноябрь","декабр":"декабрь"};
+// Rus tilidan o‘zlashgan so‘zlar: lotinda “s” — kirillda “ц”, yumshatish/ajratish belgilari va h.k. (o‘zak → o‘zak; qo‘shimchasi odatdagidek o‘giriladi)
+const EXS=[["prinsip","принцип"],["funksiya","функция"],["funksional","функционал"],["aksiyador","акциядор"],["aksioner","акционер"],["aksiz","акциз"],["aksiya","акция"],["aksent","акцент"],["aksept","акцепт"],["sanksiya","санкция"],["reaksiya","реакция"],["fraksiya","фракция"],["inspeksiya","инспекция"],["instansiya","инстанция"],["kompetensiya","компетенция"],["konsepsiya","концепция"],["konsert","концерт"],["konsern","концерн"],["konvensiya","конвенция"],["kolleksiya","коллекция"],["korreksiya","коррекция"],["distansiya","дистанция"],["tendensiya","тенденция"],["potensial","потенциал"],["sement","цемент"],["senz","ценз"],["sentr","центр"],["sivil","цивил"],["sikl","цикл"],["sirk","цирк"],["sitata","цитата"],["kvitansiya","квитанция"],["provinsiya","провинция"],["rezidensiya","резиденция"],["direksiya","дирекция"],["seksiya","секция"],["konstruksiya","конструкция"],["instruksiya","инструкция"],["produksiya","продукция"],["redaksiya","редакция"],["tranzaksiya","транзакция"],["abstraksiya","абстракция"],["fransiya","франция"],["fransuz","француз"],["kansler","канцлер"],["kanselyariya","канцелярия"],["konkurensiya","конкуренция"],["intervensiya","интервенция"],["preferensiya","преференция"],["konferensiya","конференция"],["ssenariy","сценарий"],["kompyuter","компьютер"],["pyesa","пьеса"],["obyekt","объект"],["subyekt","субъект"],["inyeksiya","инъекция"],["konyunktura","конъюнктура"],["podyezd","подъезд"],["rayon","район"],["mayor","майор"],["batalyon","батальон"],["pavilyon","павильон"],["sentabr","сентябр"],["oktabr","октябр"],["korrupsiya","коррупция"],["prezumpsiya","презумпция"],["auksion","аукцион"],["seleksiya","селекция"],["stansiya","станция"],["ensiklopediya","энциклопедия"],["proporsional","пропорционал"],["yurisdiksiya","юрисдикция"],["yurisprudensiya","юриспруденция"],["subvensiya","субвенция"],["sitrus","цитрус"],["reproduksiya","репродукция"],["rekonstruksiya","реконструкция"],["sentyabr","сентябр"],["konseptual","концептуал"],["ierarx","иерарх"],["lisey","лицей"],["aksionerlik","акционерлик"]].sort((a,b)=>b[0].length-a[0].length);
+const EXW={rol:"роль",model:"модель",parol:"пароль",medal:"медаль",avtomobil:"автомобиль",mebel:"мебель",spektakl:"спектакль",portfel:"портфель"};
+const capFix=(w,r)=>w.length>1&&w===w.toUpperCase()?r.toUpperCase():(w[0]!==w[0].toLowerCase()?r[0].toUpperCase()+r.slice(1):r);
+function exw(w){ const lo=w.toLowerCase(); if(EXW[lo]) return capFix(w,EXW[lo]);
+  const e=EXS.find(([l])=>lo.startsWith(l)); return e?capFix(w,e[1])+w.slice(e[0].length):w; }
 function cyr(str){
   // rim raqamlari (I, II, IV, XII ...) o‘zgarmaydi; sanalarda chiziqcha qo‘yilmaydi: 1991-yil 18-noyabr → 1991 йил 18 ноябрь
-  return String(str).split(/(\b(?:https?:\/\/)?[a-z]+\.(?:uz|com|org|ru)(?:\/[^\s,;)]*)?|\b(?![IVX]\. [A-ZʻʼO‘]{3})[IVXLC]+\b(?![ʻ‘'`ʼ’]))/).map((part,i)=>i%2?part:cyr0(
-    part.replace(/(\d)-(yil|yanvar|fevral|mart|aprel|may|iyun|iyul|avgust|sentabr|oktabr|noyabr|dekabr)/gi,"$1 $2")
-  ).replace(/(\d )(январ|феврал|апрел|июн|июл|сентабр|октабр|ноябр|декабр)(?![а-яёўқғҳъь])/g,(m,d,w)=>d+MON[w])).join("");
+  return String(str).split(/(\b(?:https?:\/\/)?(?:www\.)?[a-z]+\.(?:uz|com|org|ru)(?:\/[^\s,;)]*)?|\b(?![IVX]\. [A-ZʻʼO‘]{3})[IVXLC]+\b(?![ʻ‘'`ʼ’]))/).map((part,i)=>i%2?part:cyr0(
+    part.replace(/(\d)-(yil|yanvar|fevral|mart|aprel|may|iyun|iyul|avgust|sentabr|oktabr|noyabr|dekabr)/gi,"$1 $2").replace(/[A-Za-z]+/g,exw)
+  ).replace(/(^|[^а-яёўқғҳъьА-ЯЁЎҚҒҲ])(январ|феврал|апрел|июн|июл|сентябр|октябр|ноябр|декабр)(?![а-яёўқғҳъь])/gi,(m,d,w)=>d+capFix(w,MON[w.toLowerCase()]))).join("");
 }
 function cyr0(str){
   let out="",last=0; RX.lastIndex=0; let m;
@@ -336,7 +437,10 @@ function cyr0(str){
     out+=str.slice(last,m.index); last=RX.lastIndex;
     const t=m[0], low=t.toLowerCase(), prev=str[m.index-1]||" ";
     let r;
-    if(/^o./.test(low)&&low.length===2&&!/[a-z]/.test(low[1])) r="ў";
+    if(/^s.h$/.test(low)&&low.length===3) r="сҳ";
+    else if(low==="ts"&&/^(a|in(?![a-z])|inlar|iz)/i.test(str.slice(RX.lastIndex,RX.lastIndex+5))) r="тс"; // ketsa, aytsin, otsiz
+    else if(low==="e"&&/[aiouаиоуўэ]/i.test(prev)) r="э"; // poeziya → поэзия
+    else if(/^o./.test(low)&&low.length===2&&!/[a-z]/.test(low[1])) r="ў";
     else if(/^g./.test(low)&&low.length===2&&!/[a-z]/.test(low[1])) r="ғ";
     else if(t==="’") { r="ъ"; out+=r; continue; }
     else r={sh:"ш",ch:"ч",yo:"ё",yu:"ю",ya:"я",ye:"е",ts:"ц"}[low] || (low==="e"&&!/[a-zA-Zа-яё]/i.test(prev)?"э":MAP[low]);
@@ -391,7 +495,7 @@ function peek(id){return ST.q[id]}
 
 /* ---------- Sozlamalar ---------- */
 const DEF={v:3,secs:ALLSECS.slice(),count:"all",lvl:"aralash",time:0};
-let CFG=Object.assign({},DEF,ST.set||{});
+let CFG=Object.assign({},DEF,MINI?{}:(ST.set||{}));   // Mini App: har kirishda (yangilanganda) sozlamalar asl holiga qaytadi
 if(CFG.v!==3) CFG=Object.assign({},DEF); // yangi odatiy sozlamalar: hammasi, aralash, vaqt cheklanmagan
 delete CFG.mode; delete CFG.typed; delete CFG.lessons;
 
@@ -427,7 +531,7 @@ function byPos(a,b){return (SIDX[a.src[0]]-SIDX[b.src[0]])||(a.id<b.id?-1:1)}
 
 /* ---------- Holat ---------- */
 const OPENCH=new Set(), CLOSEDCH=new Set(), OPENL=new Set();
-let LIST=null, RESULT=null, STYPE="darslik", OPENSRC=null;
+let LIST=null, RESULT=null, STYPE="darslik", OPENSRC=null, STF="all"; const STOPEN=new Set();
 let TAB="mashq", SES=null, timerId=null, covOpen=null, clearAsk=null, covL=null;
 
 const SCROLLERS=[".setup>.srcs",".setup",".rcol",".scrollv",".listview","#view .card",".qpanel"];
@@ -445,7 +549,8 @@ function _render(){
   else if(TAB==="stat") v.innerHTML=`<div class="scrollv">${backBar()+viewStats()}</div>`;
   else v.innerHTML=`<div class="scrollv">${backBar()+viewCoverage()}</div>`;
   if(RESULT) v.insertAdjacentHTML("beforeend",viewResult());
-  bind();
+  if(BUY) v.insertAdjacentHTML("beforeend",viewBuy());
+  bind(); if(BUY) bindBuy();
   if(TAB==="mashq"&&SES) drawRing();
 }
 
@@ -458,9 +563,12 @@ function chapRange(c){const f=c.lessons[0], z=c.lessons[c.lessons.length-1];
   const a=lessonNo(f), b=lessonNo(z); return a&&b?`${a[0]}–${b[1]}-darslar`:""}
 const keysOfL=l=>Object.keys(l.sections).map(k=>l.id+":"+k);
 // Blok holati: tanlangan savollar soni, jami, belgi holati
-function blockState(keys,C,S){ let sel=0,tot=0,ks=0,kt=0; keys.forEach(k=>{const n=C[k]||0; if(!n) return; tot+=n; kt++; if(S.has(k)){sel+=n; ks++;}}); return {sel,tot,st:ks===0?"off":ks===kt?"on":"mix"}; }
-const cntHTML=b=>b.sel?`<span class="cnt on">(${b.sel})</span>`:`<span class="cnt">(${b.tot})</span>`;
-const cbHTML=(b,attr)=>`<input type="checkbox" ${attr} ${b.st==="on"?"checked":""} ${b.st==="mix"?'data-mix="1"':""}>`;
+// FULL bo‘lsa (demo): tot — haqiqiy savollar soni, open — demo uchun ochiq savollar
+const fullN=k=>{ const f=FULL[k]; if(!f) return 0; return CFG.lvl==="oddiy"?f[0]:CFG.lvl==="murakkab"?f[1]:f[0]+f[1]; };
+function blockState(keys,C,S){ let sel=0,tot=0,open=0,ks=0,kt=0,ft=0; keys.forEach(k=>{const n=C[k]||0, f=FULL?fullN(k):n; if(!f&&!n) return; tot+=Math.max(f,n); ft++; if(!n) return; open+=n; kt++; if(S.has(k)){sel+=n; ks++;}});
+  return {sel,tot,open,lock:ft>0&&kt===0,st:ks===0?"off":ks===kt?"on":"mix"}; }
+const cntHTML=b=>(b.sel?`<span class="cnt on">(${b.sel}${FULL&&b.sel<b.tot?" / "+b.tot:""})</span>`:`<span class="cnt">(${b.tot})</span>`)+(FULL&&!b.sel&&b.open<b.tot&&b.open?`<span class="dm">${b.open} ${TE("ochiq")}</span>`:"");
+const cbHTML=(b,attr)=>b.lock?`<span class="lockb" data-buy="1" role="button" title="${TE("To‘liq kirishda ochiladi")}">🔒</span>`:`<input type="checkbox" ${attr} ${b.st==="on"?"checked":""} ${b.st==="mix"?'data-mix="1"':""}>`;
 function viewSetup(){
   const C=secCounts(), S=new Set(CFG.secs);
   const all=blockState(ALLSECS,C,S);
@@ -483,7 +591,7 @@ function viewSetup(){
   const qCnt=ty=>ofType(ty).reduce((a,s0)=>a+blockState(srcKeys(s0),C,S).tot,0).toLocaleString("ru-RU");
   const SC={DHA8:"#2e7d32",DHA9:"#1565c0",DHA10:"#7b1fa2",DHA11:"#c75b00"};
   const srcRow=s=>{const sb=blockState(srcKeys(s),C,S), op=OPENSRC===s.id;
-    const small=isLaw(s)?(s.ready?"":TE("savollar tayyorlanmoqda")):TE(s.pub||"")+(s.authors?"<br>"+TE("Mualliflar: "+s.authors):"");
+    const small=isLaw(s)&&!s.ready?TE("savollar tayyorlanmoqda"):"";
     return `<div class="srcwrap ${op?"open":""}" ${SC[s.id]?`style="--sc:${SC[s.id]}"`:""}><div class="srcrow ${op?"open":""}"><div class="trow">${cbHTML(sb,`data-src="${s.id}" aria-label="${TE("Belgilash")}"`)}<button class="tt srct" data-srcopen="${s.id}" aria-expanded="${op}"><b>${TE(srcName(s))}</b>${small?`<small>${small}</small>`:""}</button>${cntHTML(sb)}<span class="chev" aria-hidden="true">${op?"▴":"▾"}</span></div></div>${op?detailOf(s):""}</div>`;};
   const slotsHTML=ty=>{const have=ofType(ty).length, left=Math.max(0,(SLOTS[ty]||0)-have);
     if(ty==="qonun"&&!left) return "";
@@ -500,7 +608,7 @@ function viewSetup(){
       <div class="book-t">${TE(srcName(OS))}</div>
       ${OS.sub?`<div class="book-s">${TE(OS.sub+(OS.pub?" · "+OS.pub:""))}</div>`:""}
       ${OS.authors?`<div class="book-a"><span>${TE("Mualliflar:")}</span> ${TE(OS.authors)}</div>`:""}
-      <div class="plate-note">${TE("Savollar ushbu darslikni yaxshi o‘zlashtirish uchun faqat shu darslik matnidan foydalanib tuzilgan. Har bir javob va tushuntirish darslikka ko‘ra beriladi.")}</div></div>
+      <div class="plate-note">${TE("Savollar ushbu darslikni yaxshi o‘zlashtirish uchun faqat shu darslik asosida tuzilgan. Har bir javob va tushuntirish darslikka ko‘ra beriladi.")}</div></div>
     <div class="lbl" style="margin-top:14px">${TE("Mundarija — mavzularni belgilang")}</div>
     <label class="trow allrow">${cbHTML(sb,`data-src="${OS.id}"`)}<span class="tt">${TE("Butun darslik mavzularidan savol-javob")}</span>${cntHTML(sb)}</label>`}
     <div class="row" style="justify-content:flex-end;margin:4px 0 8px"><button class="link" data-clrsrc="${OS.id}">${TE("Belgini tozalash")}</button></div>
@@ -513,16 +621,17 @@ function viewSetup(){
     <button class="btn primary go" id="start" ${cnt?"":"disabled"}>${TE(isList?"Ko‘rish":"Boshlash")}</button>
   </section>
   <section class="panel srcs">
-    <h2 class="sech">${TE("Savol-javoblar")}</h2>
-    ${MINI&&MINI.level<2?`<div class="minilock"><div>${TE(MINI.level===0?"🆓 Demo: har bir darslikning 1-bobi va har bir hujjatning dastlabki 10 ta savoli ochiq.":"📢 Kanal a’zosi: 1–2-boblar va hujjatlarning dastlabki 20 ta savoli ochiq.")}<br><b>${TE("Yopiq: "+MINI.locked.toLocaleString("ru-RU")+" ta savol")}</b></div>
-      <div class="row" style="gap:8px;margin-top:8px">${MINI.level===0?`<button class="btn" data-mini="join">${TE("📢 Kanalga a’zo bo‘lish")}</button>`:""}<button class="btn primary" data-mini="buy">${TE("🔓 To‘liq kirish — "+MINI.price+" so‘m")}</button></div></div>`:""}
+    ${MINI?miniBanner():`<h2 class="sech">${TE("Savol-javoblar")}</h2>`}
     <div class="lbl">${TE("1. Manbalar")}</div>
-    <label class="trow allrow">${cbHTML(all,'id="allBook"')}<span class="tt">${TE("Barcha manbalardan savol-javob")}</span>${cntHTML(all)}</label>
-    <div class="row selbar"><button class="btn" id="selAll">${TE("✓ Hammasini belgilash")}</button><button class="btn" id="selNone">${TE("✕ Barcha belgilarni tozalash")}</button></div>
-    <div class="seg" style="margin:10px 0">
-      <button data-stype="darslik" aria-pressed="${STYPE==="darslik"}">${TE("Darsliklar ("+ofType("darslik").length+" ta) · "+qCnt("darslik")+" savol")}</button>
-      <button data-stype="qonun" aria-pressed="${STYPE==="qonun"}">${TE("Qonunchilik hujjatlari ("+ofType("qonun").length+" ta) · "+qCnt("qonun")+" savol")}</button></div>
-    <div class="stack" style="gap:8px">${ofType(STYPE).map(srcRow).join("")}${slotsHTML(STYPE)}</div>
+    <label class="trow allrow">${cbHTML(all,'id="allBook"')}<span class="tt">${TE("Barchasi")}<small>${TE("barcha darsliklar va qonunchilik hujjatlaridan savol-javob")}</small></span>${cntHTML(all)}</label>
+    <div class="row selbar"><button class="btn" id="selAll">${TE("✓ Hammasini belgilash")}</button><button class="btn" id="selNone">${TE(MINI?"✕ Belgilarni tozalash":"✕ Barcha belgilarni tozalash")}</button></div>
+    <div class="tblocks">
+      <button class="tblk tb-d" data-stype="darslik" aria-pressed="${STYPE==="darslik"}"><b>${TE("📘 Darsliklar ("+ofType("darslik").length+" ta)")}</b><small>${TE(qCnt("darslik")+" savol")}</small></button>
+      <span class="tarrow" aria-hidden="true">⇄</span>
+      <button class="tblk tb-q" data-stype="qonun" aria-pressed="${STYPE==="qonun"}"><b>${TE("⚖️ Qonunchilik hujjatlari ("+ofType("qonun").length+" ta)")}</b><small>${TE(qCnt("qonun")+" savol")}</small></button></div>
+    <div class="tlist ${STYPE==="qonun"?"tl-q":"tl-d"}">
+      ${(()=>{const tb=blockState(ofType(STYPE).flatMap(srcKeys),C,S); return `<label class="trow allrow sm">${cbHTML(tb,`data-stall="${STYPE}"`)}<span class="tt">${TE(STYPE==="qonun"?"Barchasi — "+ofType("qonun").length+" ta qonunchilik hujjati":"Barchasi — "+ofType("darslik").length+" ta darslik")}</span>${cntHTML(tb)}</label>`;})()}
+      <div class="stack" style="gap:6px">${ofType(STYPE).map(srcRow).join("")}${slotsHTML(STYPE)}</div></div>
   </section>
   <div class="rcol">
     <aside class="opts panel">
@@ -540,7 +649,7 @@ function viewSetup(){
     </aside>
     <div class="navs">
       <button class="navcard" data-nav="stat"><span><b>${TE("O‘zlashtirish statistikasi")}</b><small>${TE("ko‘rilgan "+seen+" ta · bildim "+(tt2?Math.round(kk/tt2*100):0)+"%")}</small></span><span aria-hidden="true">›</span></button>
-      <button class="navcard" data-nav="qamrov"><span><b>${TE("Qamrov xaritasi")}</b><small>${TE(BANK.sentences.length+" gap · "+qs.length+" savol · 100%")}</small></span><span aria-hidden="true">›</span></button>
+      ${MINI?"":`<button class="navcard" data-nav="qamrov"><span><b>${TE("Qamrov xaritasi")}</b><small>${TE(BANK.sentences.length+" gap · "+qs.length+" savol · 100%")}</small></span><span aria-hidden="true">›</span></button>`}
     </div>
   </div>
   </div>`;
@@ -614,7 +723,7 @@ function passageHTML(q){
   if(law){ const pars=new Set(part.map(s=>s.p)); part=L.filter(s=>pars.has(s.p)&&s.l===lid); }
   if(!part.length) return "";
   const pages=[...new Set(part.map(s=>s.page).filter(Boolean))].join(", ");
-  return `<div class="passage dark"><div class="lbl" style="margin:0 0 8px"><b>${TE(KORA(S0))}</b> · ${TE(srcName(S0)+", "+shortL(lid)+(law?"":", "+pages+"-bet"))}</div>
+  return `<div class="passage dark"><div class="lbl" style="margin:0 0 8px"><b>${TE(KORA(S0))}</b> · ${TE(srcCite(S0)+", "+shortL(lid)+(law?"":", "+pages+"-bet"))}</div>
     ${part.map(s=>`<p class="lp">${hiText(s.text,q.a,q.q,set.has(s.id))}</p>`).join("")}
     </div>`;
 }
@@ -633,7 +742,7 @@ function viewCard(){
       <div class="lbl" style="margin:0">${TE(SES.timeUp?"Vaqt tugadi · Javob":"Javob")}</div>
       <div class="a">${TE(q.a)}</div>
       ${q.w?`<div class="w">${TE(q.w)}</div>`:""}
-      <div class="src">${TE("Manba: "+srcName(SRC_OF_L[lessonOf(q)])+", "+locOf(lessonOf(q),srcs))}
+      <div class="src">${TE("Manba: "+srcCite(SRC_OF_L[lessonOf(q)])+", "+locOf(lessonOf(q),srcs))}
         </div>
       ${passageHTML(q)}
       ${SES.ai?`<div class="aibox ${SES.aiErr?"err":""}" aria-live="polite">${TE(SES.ai)}</div>`:""}
@@ -742,6 +851,62 @@ function viewResult(){
       <button class="btn" id="resToc">${TE("Mundarijaga qaytish")}</button><button class="btn" data-nav="stat">${TE("O‘zlashtirish statistikasi")}</button></div>
   </div></div>`;
 }
+/* ---------- Mini App: kirish holati va to‘liq kirish so‘rovi ---------- */
+let BUY=null;  // {step:"chan"|"form"|"sent"|"pend", tariff, phone, err, busy}
+const fmtS=n=>(+n||0).toLocaleString("ru-RU");
+const dDate=t=>{const d=new Date(t*1000); return String(d.getDate()).padStart(2,"0")+"."+String(d.getMonth()+1).padStart(2,"0")+"."+d.getFullYear();};
+function miniBanner(){
+  if(MINI.level>=2) return `<div class="minilock ok">${TE(MINI.until?"✅ To‘liq kirish: "+dDate(MINI.until)+" gacha":"✅ To‘liq kirish ochiq")}</div>`;
+  return `<div class="minilock"><div>${TE("🆓 Demo: har bir darslik mavzusidan va har bir qonunchilik hujjatidan "+MINI.demo_n+" tadan savol ochiq. Jami: "+fmtS(MINI.total)+" ta savol-javob.")}</div>
+    ${MINI.pending?`<div class="pend">${TE("⏳ So‘rovingiz admin tomonidan ko‘rib chiqilmoqda.")}</div>`:""}
+    <button class="btn primary buyb" data-buy="1">${TE("🔓 To‘liq kirish — barcha savol-javoblar")}</button></div>`;
+}
+function openBuy(){ if(!MINI||MINI.level>=2) return; BUY={step:MINI.member===false?"chan":(MINI.pending?"pend":"form"),tariff:(MINI.tariffs[0]||{}).id,phone:MINI.phone||"",err:""}; render();
+  miniPost("api/check").then(j=>{ if(!BUY||j.member===undefined) return; MINI.member=!!j.member; if(!j.member&&BUY.step!=="sent"){BUY.step="chan"; render();} }); }
+const curTar=()=>MINI.tariffs.find(t=>t.id===BUY.tariff)||MINI.tariffs[0]||{price:0};
+function viewBuy(){
+  let body="";
+  if(BUY.step==="chan") body=`<p>${TE("1-qadam. To‘liq kirish uchun avval kanalimizga obuna bo‘ling:")}</p>
+    <div class="row"><button class="btn" id="bChan">${TE("📢 Kanalga o‘tish")}</button><button class="btn primary" id="bChk" ${BUY.busy?"disabled":""}>${TE("✅ Obuna bo‘ldim — tekshirish")}</button></div>
+    ${BUY.err?`<div class="err">${TE(BUY.err)}</div>`:""}`;
+  else if(BUY.step==="pend") body=`<p>${TE("⏳ Avvalgi so‘rovingiz admin tomonidan ko‘rib chiqilmoqda. Tasdiqlangach botda xabar keladi va ilovani qayta ochganingizda barcha savol-javoblar ochiladi.")}</p>
+    <div class="row"><button class="btn" id="bNew">${TE("Yangi so‘rov yuborish")}</button></div>`;
+  else if(BUY.step==="sent") body=`<p>${TE("✅ So‘rovingiz adminga yuborildi. Admin tasdiqlagach botda xabar keladi; ilovani qayta ochsangiz, barcha savol-javoblar ochiq bo‘ladi.")}</p>
+    <div class="row"><button class="btn primary" id="bClose">${TE("Yopish")}</button></div>`;
+  else { const t=curTar(), paid=t.price>0;
+    body=`<div class="lbl" style="margin:0">${TE("Obuna muddatini tanlang")}</div>
+    <div class="tars">${MINI.tariffs.map(x=>`<label class="tar ${x.id===BUY.tariff?"on":""}"><input type="radio" name="tar" value="${esc(x.id)}" ${x.id===BUY.tariff?"checked":""}><span><b>${TE(x.name)}</b><small>${TE(x.price>0?fmtS(x.price)+" so‘m":"bepul")}</small></span></label>`).join("")}</div>
+    ${paid&&MINI.paytext?`<div class="note">${TE(MINI.paytext)}</div>`:""}
+    <label class="fl"><span>${TE("Telefon raqamingiz")}</span><input type="tel" id="bPhone" value="${esc(BUY.phone)}" placeholder="+998 __ ___ __ __" autocomplete="tel"></label>
+    ${TGW&&TGW.requestContact?`<button class="link" id="bTel" style="padding-left:0">${TE("📱 Telegram’dagi raqamimni olish")}</button>`:""}
+    ${paid?`<label class="fl"><span>${TE("To‘lov cheki (rasm yoki PDF)")}</span><input type="file" id="bFile" accept="image/*,application/pdf">${BUY.file?`<small class="ok">✓ ${esc(BUY.file.name)}</small>`:""}</label>`:`<p class="hint" style="margin:0">${TE("Bu muddat bepul — chek talab qilinmaydi.")}</p>`}
+    ${BUY.err?`<div class="err">${TE(BUY.err)}</div>`:""}
+    <button class="btn primary" id="bSend" ${BUY.busy?"disabled":""}>${TE(BUY.busy?"Yuborilmoqda…":"Adminga tasdiqlash uchun yuborish")}</button>`; }
+  return `<div class="modal" role="dialog" aria-modal="true"><div class="mbox buybox"><button class="mx" id="bX" aria-label="Yopish">✕</button>
+    <h2>${TE("🔓 To‘liq kirish — barcha savol-javoblar")}</h2>${body}</div></div>`;
+}
+async function miniPost(path,data){ const fd=new FormData(); fd.append("init",(TGW&&TGW.initData)||""); Object.entries(data||{}).forEach(([k,v])=>{ if(v!=null) fd.append(k,v); });
+  let r, j={}; try{ r=await fetch(path,{method:"POST",body:fd}); try{j=await r.json()}catch(e){} if(!r.ok&&!j.error) j.error="Server xatosi ("+r.status+")"; }catch(e){ j={error:"Internet aloqasini tekshiring."}; } return j; }
+function bindBuy(){
+  const on=(s,f,ev="click")=>{const e=$(s); if(e) e.addEventListener(ev,f);};
+  on("#bX",()=>{BUY=null;render();}); on("#bClose",()=>{BUY=null;render();});
+  on("#bChan",()=>{try{TGW?TGW.openTelegramLink(MINI.channel_url):window.open(MINI.channel_url,"_blank")}catch(e){window.open(MINI.channel_url,"_blank")}});
+  on("#bChk",async()=>{BUY.busy=true;render(); const j=await miniPost("api/check"); BUY.busy=false;
+    if(j.member){MINI.member=true; BUY.step=MINI.pending?"pend":"form"; BUY.err="";} else BUY.err=j.error||"Hali kanalga obuna bo‘lmagansiz. Obuna bo‘lib, qayta tekshiring.";
+    render(); });
+  on("#bFile",e=>{BUY.file=e.target.files&&e.target.files[0]||null; const p=$("#bPhone"); if(p) BUY.phone=p.value; render();},"change");
+  on("#bNew",()=>{BUY.step="form";render();});
+  document.querySelectorAll('input[name="tar"]').forEach(r=>r.addEventListener("change",e=>{const p=$("#bPhone"); if(p) BUY.phone=p.value; BUY.tariff=e.target.value; render();}));
+  on("#bTel",()=>{ try{ TGW.requestContact((ok,res)=>{ const p=ok&&res&&res.responseUnsafe&&res.responseUnsafe.contact&&res.responseUnsafe.contact.phone_number; if(p){BUY.phone=(String(p).startsWith("+")?"":"+")+p; render();} }); }catch(e){} });
+  on("#bSend",async()=>{ const ph=($("#bPhone").value||"").trim(); BUY.phone=ph; const t=curTar(), file=BUY.file;
+    if(ph.replace(/\D/g,"").length<9){BUY.err="Telefon raqamini to‘liq kiriting.";return render();}
+    if(t.price>0&&!file){BUY.err="To‘lov chekini (rasm yoki PDF) biriktiring.";return render();}
+    if(file&&file.size>10*1024*1024){BUY.err="Fayl hajmi 10 MB dan oshmasin.";return render();}
+    BUY.busy=true;BUY.err="";render();
+    const j=await miniPost("api/request",{tariff:t.id,phone:ph,file});
+    BUY.busy=false; if(j.ok){BUY.step="sent"; MINI.pending=true;} else if(j.need_channel){MINI.member=false; BUY.step="chan"; BUY.err="";} else BUY.err=j.error||"Yuborib bo‘lmadi.";
+    render(); });
+}
 function backBar(){return `<div class="backbar"><button class="btn" data-nav="mashq">${TE("← Savol-javoblar")}</button></div>`}
 /* ---------- AI ustoz ---------- */
 function srcText(q){return q.src.map(id=>SENT[id]&&("["+id+", "+SENT[id].page+"-bet] "+SENT[id].text)).join("\n")}
@@ -842,13 +1007,18 @@ function viewStats(){
   qs.forEach(q=>{const s=peek(q.id); if(s&&s.n){seen++;k+=s.k;p+=s.p;u+=s.u; if(s.d<=now) due++;}});
   const tot=k+p+u;
   const byL={}; qs.forEach(q=>{(byL[lessonOf(q)]=byL[lessonOf(q)]||[]).push(q)});
-  const row=(title,list,go)=>{ let kk=0,pp=0,uu=0; list.forEach(q=>{const s=peek(q.id); if(s&&s.l){ if(s.l==="k")kk++; else if(s.l==="p")pp++; else uu++; }});
+  const agg=list=>{ let kk=0,pp=0,uu=0; list.forEach(q=>{const s=peek(q.id); if(s&&s.l){ if(s.l==="k")kk++; else if(s.l==="p")pp++; else uu++; }});
     const n=list.length||1, m=Math.round(list.reduce((a,q)=>a+Math.min((peek(q.id)||{b:0}).b,5),0)/(n*5)*100);
-    return `<button class="mrow go-row" data-go="${go}" title="${TE("Shu mavzudan savol-javob")}"><span>${TE(title)} <span class="hint">(${list.length})</span></span>
-      <span class="mbar" title="bildim/qisman/bilmadim"><i style="width:${kk/n*100}%;background:var(--know)"></i><i style="width:${pp/n*100}%;background:var(--part)"></i><i style="width:${uu/n*100}%;background:var(--dont)"></i></span>
-      <span class="num">${m}% ›</span></button>`; };
+    return `<span class="mbar" title="bildim/qisman/bilmadim"><i style="width:${kk/n*100}%;background:var(--know)"></i><i style="width:${pp/n*100}%;background:var(--part)"></i><i style="width:${uu/n*100}%;background:var(--dont)"></i></span><span class="num">${m}%</span>`; };
+  const row=(title,list,go)=>`<button class="mrow go-row" data-go="${go}" title="${TE("Shu mavzudan savol-javob")}"><span>${TE(title)} <span class="hint">(${list.length})</span></span>${agg(list)}</button>`;
   const hasQ=c=>c.lessons.some(l=>(byL[l.id]||[]).length);
-  const secRows=SOURCES.filter(S0=>srcChapters(S0).some(hasQ)).map(S0=>`<div class="srch">${TE(srcName(S0))}</div>`+srcChapters(S0).filter(hasQ).map(c=>`<button class="chgo" data-go="${c.id}"><span>${TE(c.title)}</span><small>${TE(chapRange(c)+" · butun "+(isLaw(S0)?"bo‘limdan":"bobdan")+" savol-javob ›")}</small></button>`+c.lessons.filter(l=>!isLaw(S0)||(byL[l.id]||[]).length).map(l=>row(l.title,byL[l.id]||[],l.id)).join("")).join("")).join("");
+  const qOf=ls=>ls.flatMap(l=>byL[l.id]||[]);
+  const secRows=SOURCES.filter(S0=>(STF==="all"||S0.type===STF)&&srcChapters(S0).some(hasQ)).map(S0=>{const chs=srcChapters(S0).filter(hasQ);
+    return `<details class="stsrc" data-sto="${S0.id}" ${STOPEN.has(S0.id)?"open":""}><summary class="mrow"><span><b>${TE(srcName(S0))}</b> <span class="hint">(${qOf(chs.flatMap(c=>c.lessons)).length})</span></span>${agg(qOf(chs.flatMap(c=>c.lessons)))}</summary>`+
+    chs.map(c=>`<details class="stch" data-sto="${c.id}" ${STOPEN.has(c.id)?"open":""}><summary class="mrow"><span>${TE(c.title)} <span class="hint">(${qOf(c.lessons).length})</span></span>${agg(qOf(c.lessons))}</summary>
+      <button class="chgo" data-go="${c.id}"><small>${TE((chapRange(c)?chapRange(c)+" · ":"")+"butun "+(isLaw(S0)?"bo‘limdan":"bobdan")+" savol-javob ›")}</small></button>`+
+      c.lessons.filter(l=>(byL[l.id]||[]).length).map(l=>row(l.title,byL[l.id]||[],l.id)).join("")+`</details>`).join("")+`</details>`;}).join("");
+  const stfBar=`<div class="chips" style="margin:0 0 8px">${[["all","Hammasi"],["darslik","Darsliklar"],["qonun","Qonunchilik hujjatlari"]].map(([k,l])=>`<button class="chip" data-stf="${k}" aria-pressed="${STF===k}">${TE(l)}</button>`).join("")}</div>`;
   const weak=qs.filter(q=>(peek(q.id)||{}).u).sort((a,b)=>peek(b.id).u-peek(a.id).u).slice(0,8);
   const hist=(ST.hist||[]).slice(0,8);
   const d=t=>new Date(t).toLocaleDateString("uz-UZ",{day:"2-digit",month:"2-digit"})+" "+new Date(t).toLocaleTimeString("uz-UZ",{hour:"2-digit",minute:"2-digit"});
@@ -860,7 +1030,7 @@ function viewStats(){
       <div class="tile"><b>${due}</b><span>${TE("takrorga navbatda")}</span></div>
     </div>
     <section class="panel"><h3>${TE("Mavzular bo‘yicha o‘zlashtirish")}</h3>
-      <p class="hint" style="margin:0 0 6px">${TE("Mavzuni bosing — darhol shu mavzudan savol-javob boshlanadi. Chiziq: yashil — bildim, sariq — qisman, qizil — bilmadim.")}</p>${secRows}</section>
+      <p class="hint" style="margin:0 0 6px">${TE("Manba va bobni bosib oching; mavzuni bosing — darhol shu mavzudan savol-javob boshlanadi. Chiziq: yashil — bildim, sariq — qisman, qizil — bilmadim.")}</p>${stfBar}${secRows||`<div class="empty">${TE("Bu bo‘limda savol yo‘q.")}</div>`}</section>
     <section class="panel"><div class="row" style="justify-content:space-between;margin-bottom:6px"><h3 style="margin:0">${TE("Eng ko‘p qiynagan savollar")}</h3>
       ${weak.length?`<button class="btn" id="drillWeak" style="padding:6px 12px">${TE("Shularni mashq qilish")}</button>`:""}</div>
       ${weak.length?`<div class="list">${weak.map(q=>`<div class="it"><span>${TE(q.q)}</span><span class="pill u">✗ ${peek(q.id).u}</span></div>`).join("")}</div>`:`<div class="empty">${TE("Hali “bilmadim” deb belgilangan savol yo‘q.")}</div>`}</section>
@@ -920,8 +1090,10 @@ function bind(){
   on("[data-chap]",e=>{const c=BANK.chapters.find(x=>x.id===e.target.dataset.chap); OPENCH.add(c.id); setKeys(c.lessons.flatMap(keysOfL),e.target.checked);},"change");
   on("[data-sec]",e=>setKeys([e.target.dataset.sec],e.target.checked),"change");
   on("#allBook",e=>setKeys(ALLSECS,e.target.checked),"change");
-  on("[data-mini]",e=>{ const k=e.currentTarget.dataset.mini, url=k==="join"?MINI.channel_url:MINI.bot_url+"?start=buy";
-    try{ if(TGW){ TGW.openTelegramLink(url); if(k==="buy") TGW.close(); } else window.open(url,"_blank"); }catch(_){ window.open(url,"_blank"); } });
+  on("[data-stall]",e=>setKeys(SOURCES.filter(s=>s.type===e.target.dataset.stall).flatMap(srcKeys),e.target.checked),"change");
+  on("[data-buy]",e=>{e.preventDefault(); e.stopPropagation(); openBuy();});
+  on("[data-stf]",e=>{STF=e.currentTarget.dataset.stf; render();});
+  on("details[data-sto]",e=>{const id=e.currentTarget.dataset.sto; e.currentTarget.open?STOPEN.add(id):STOPEN.delete(id);},"toggle");
   on("#selAll",()=>setCfg("secs",ALLSECS.slice()));
   on("#selNone",()=>setCfg("secs",[]));
   on("[data-clrsrc]",e=>{const S0=SOURCES.find(x=>x.id===e.currentTarget.dataset.clrsrc); const ks=new Set(srcKeys(S0)); setCfg("secs",CFG.secs.filter(k=>!ks.has(k)));});
@@ -974,6 +1146,10 @@ document.addEventListener("keydown",e=>{
   else if(SES.revealed&&["1","2","3"].includes(e.key)) grade({1:"u",2:"p",3:"k"}[e.key]);
   else if(e.key==="ArrowLeft") goTo(SES.i-1); else if(e.key==="ArrowRight") goTo(SES.i+1);
 });
+if(MINI){ document.documentElement.setAttribute("data-theme","light"); document.body.classList.add("mini");
+  const b=$(".brand"); if(b) b.innerHTML="<b>huquqsavoljavob</b>"; document.title="huquqsavoljavob";
+  let sp=""; try{sp=(TGW&&TGW.initDataUnsafe&&TGW.initDataUnsafe.start_param)||new URLSearchParams(location.search).get("buy")||"";}catch(e){}
+  if(sp) setTimeout(openBuy,50); }
 render();
 })();
 </script>

@@ -2,9 +2,9 @@
 Huquq savol-javob — Telegram bot (@huquqsavoljavob_bot)
 
 Kirish darajalari:
-  • demo (hamma uchun)      — har bir darslikning 1-bobi, 35 ta hujjatning har biridan dastlabki 10 ta savol
-  • kanal a'zolari           — + darsliklarning 2-bobi, hujjatlarning 11–20-savollari
-  • to'liq (to'lov)          — barcha savol-javoblar
+  • demo (hamma uchun) — darsliklarning har bir mavzusidan va har bir qonunchilik hujjatidan 5 tadan savol
+  • to'liq kirish      — barcha savol-javoblar: kanalga obuna + (narx > 0 bo'lsa) to'lov cheki va telefon raqami
+                         adminga yuboriladi; admin tasdiqlagach tanlangan muddatga (oylik/yillik tarif) ochiladi
 Admin buyruqlari: /admin
 """
 import asyncio, json, os, re, sqlite3, time, html, logging
@@ -27,7 +27,7 @@ CHANNEL = os.getenv("CHANNEL", "@huquqsavoljavob")            # kanal (bot kanal
 CHANNEL_URL = os.getenv("CHANNEL_URL", "https://t.me/huquqsavoljavob")
 ADMINS = {int(x) for x in os.getenv("ADMIN_IDS", "").replace(" ", "").split(",") if x}
 PROVIDER_TOKEN = os.getenv("PAYMENT_PROVIDER_TOKEN", "")       # Payme/Click (BotFather → Payments). Bo'sh bo'lsa — qo'lda to'lov
-FREE_N, CHANNEL_N = 10, 20                                      # hujjatlar: demo / kanal chegarasi
+DEMO_N = 5                                                      # demo: har bir mavzu / hujjatdan ochiq savollar
 logging.basicConfig(level=logging.INFO)
 
 # ---------------- Ma'lumotlar ----------------
@@ -61,33 +61,63 @@ create table if not exists kv(k text primary key, v text);
 create table if not exists pays(id integer primary key autoincrement, uid integer, amount integer, kind text, t integer, info text);
 create table if not exists receipts(id integer primary key autoincrement, uid integer, file_id text, ftype text, kind text, amount integer, status text default 'pending', t integer, dt integer, admin integer, note text);
 """)
-for _col in ("last integer",):
-    try: db.execute("alter table users add column " + _col)
+for _tb, _col in (("users", "last integer"), ("users", "until integer"), ("users", "phone text"), ("users", "warned integer"),
+                  ("receipts", "tariff text"), ("receipts", "months integer"), ("receipts", "phone text"), ("receipts", "path text")):
+    try: db.execute(f"alter table {_tb} add column {_col}")
     except Exception: pass
+RCPT_DIR = DB_PATH.parent / "receipts"; RCPT_DIR.mkdir(parents=True, exist_ok=True)
 def kv(k, d=None):
     r = db.execute("select v from kv where k=?", (k,)).fetchone(); return r[0] if r else d
 def set_kv(k, v): db.execute("insert or replace into kv values(?,?)", (k, str(v))); db.commit()
 if kv("price") is None: set_kv("price", 500000)
 if kv("auto_open") is None: set_kv("auto_open", 0)
-if kv("paytext") is None: set_kv("paytext", "To‘lov uchun admin bilan bog‘laning. To‘lov chekini (skrinshot) shu botga yuboring — admin tasdiqlagach to‘liq kirish ochiladi.")
+if kv("paytext") is None or kv("paytext").startswith("To‘lov uchun admin bilan bog‘laning. To‘lov chekini (skrinshot) shu botga"):
+    set_kv("paytext", "To‘lovni admin ko‘rsatgan karta raqamiga o‘tkazing va to‘lov chekini (skrinshot yoki PDF) shu yerga biriktiring. Admin tasdiqlagach to‘liq kirish ochiladi.")
+if kv("tariffs") is None:
+    set_kv("tariffs", json.dumps([{"id": "m1", "name": "1 oylik obuna", "months": 1, "price": 50000},
+                                  {"id": "y1", "name": "1 yillik obuna", "months": 12, "price": int(kv("price"))}], ensure_ascii=False))
+def tariffs():
+    try: return [t_ for t_ in json.loads(kv("tariffs")) if t_.get("id")]
+    except Exception: return []
+def tariff(tid): return next((t_ for t_ in tariffs() if t_["id"] == tid), None)
+def add_months(ts, m):
+    import datetime as _d
+    d = _d.datetime.fromtimestamp(ts, _d.timezone(_d.timedelta(hours=5)))
+    y, mo = divmod(d.month - 1 + int(m), 12); y += d.year; mo += 1
+    import calendar; day = min(d.day, calendar.monthrange(y, mo)[1])
+    return int(d.replace(year=y, month=mo, day=day).timestamp())
 def user(uid, name=""):
-    r = db.execute("select id,name,paid,cyr from users where id=?", (uid,)).fetchone()
+    r = db.execute("select id,name,paid,cyr,until,phone from users where id=?", (uid,)).fetchone()
     now = int(time.time())
     if not r:
         db.execute("insert into users(id,name,created,last) values(?,?,?,?)", (uid, name, now, now)); db.commit()
-        r = (uid, name, 0, 0)
+        r = (uid, name, 0, 0, None, None)
     else:
         db.execute("update users set last=?" + (", name=?" if name else "") + " where id=?", ((now, name, uid) if name else (now, uid))); db.commit()
-    return {"id": r[0], "name": r[1], "paid": r[2], "cyr": r[3]}
+    return {"id": r[0], "name": r[1], "paid": r[2], "cyr": r[3], "until": r[4], "phone": r[5]}
+def has_full(u): return bool(u["paid"]) or (u.get("until") or 0) > time.time() or u["id"] in ADMINS
 
 # ---------------- Lotin → Kirill ----------------
 _M = dict(a="а", b="б", d="д", e="е", f="ф", g="г", h="ҳ", i="и", j="ж", k="к", l="л", m="м", n="н", o="о", p="п", q="қ", r="р", s="с", t="т", u="у", v="в", x="х", y="й", z="з", c="с", w="в")
-_RX = re.compile(r"o[ʻ‘'`ʼ]|g[ʻ‘'`ʼ]|sh|ch|yo|yu|ya|ye|ts|’|ʼ|[a-z]", re.I)
-_MON = {"январ": "январь", "феврал": "февраль", "апрел": "апрель", "июн": "июнь", "июл": "июль", "сентабр": "сентябрь", "октабр": "октябрь", "ноябр": "ноябрь", "декабр": "декабрь"}
+_RX = re.compile(r"s[’ʼ'`]h|o[ʻ‘'`ʼ]|g[ʻ‘'`ʼ]|sh|ch|yo(?![ʻ‘'`ʼ])|yu|ya|ye|ts|’|ʼ|[a-z]", re.I)
+_MON = {"январ": "январь", "феврал": "февраль", "апрел": "апрель", "июн": "июнь", "июл": "июль", "сентябр": "сентябрь", "октябр": "октябрь", "ноябр": "ноябрь", "декабр": "декабрь"}
+# rus tilidan o'zlashgan so'zlar (o'zak → o'zak), shablondagi ro'yxat bilan bir xil
+_EXS = sorted([("prinsip","принцип"),("funksiya","функция"),("funksional","функционал"),("aksiyador","акциядор"),("aksioner","акционер"),("aksiz","акциз"),("aksiya","акция"),("aksent","акцент"),("aksept","акцепт"),("sanksiya","санкция"),("reaksiya","реакция"),("fraksiya","фракция"),("inspeksiya","инспекция"),("instansiya","инстанция"),("kompetensiya","компетенция"),("konsepsiya","концепция"),("konsert","концерт"),("konsern","концерн"),("konvensiya","конвенция"),("kolleksiya","коллекция"),("korreksiya","коррекция"),("distansiya","дистанция"),("tendensiya","тенденция"),("potensial","потенциал"),("sement","цемент"),("senz","ценз"),("sentr","центр"),("sivil","цивил"),("sikl","цикл"),("sirk","цирк"),("sitata","цитата"),("kvitansiya","квитанция"),("provinsiya","провинция"),("rezidensiya","резиденция"),("direksiya","дирекция"),("seksiya","секция"),("konstruksiya","конструкция"),("instruksiya","инструкция"),("produksiya","продукция"),("redaksiya","редакция"),("tranzaksiya","транзакция"),("abstraksiya","абстракция"),("fransiya","франция"),("fransuz","француз"),("kansler","канцлер"),("kanselyariya","канцелярия"),("konkurensiya","конкуренция"),("intervensiya","интервенция"),("preferensiya","преференция"),("konferensiya","конференция"),("ssenariy","сценарий"),("kompyuter","компьютер"),("pyesa","пьеса"),("obyekt","объект"),("subyekt","субъект"),("inyeksiya","инъекция"),("konyunktura","конъюнктура"),("podyezd","подъезд"),("rayon","район"),("mayor","майор"),("batalyon","батальон"),("pavilyon","павильон"),("sentabr","сентябр"),("oktabr","октябр"),("korrupsiya","коррупция"),("prezumpsiya","презумпция"),("auksion","аукцион"),("seleksiya","селекция"),("stansiya","станция"),("ensiklopediya","энциклопедия"),("proporsional","пропорционал"),("yurisdiksiya","юрисдикция"),("yurisprudensiya","юриспруденция"),("subvensiya","субвенция"),("sitrus","цитрус"),("reproduksiya","репродукция"),("rekonstruksiya","реконструкция"),("sentyabr","сентябр"),("konseptual","концептуал"),("ierarx","иерарх"),("lisey","лицей"),("aksionerlik","акционерлик")], key=lambda x: -len(x[0]))
+_EXW = {"rol": "роль", "model": "модель", "parol": "пароль", "medal": "медаль", "avtomobil": "автомобиль", "mebel": "мебель", "spektakl": "спектакль", "portfel": "портфель"}
+def _cap(w, r): return r.upper() if len(w) > 1 and w.isupper() else (r[0].upper() + r[1:] if w[0].isupper() else r)
+def _exw(m):
+    w = m.group(0); lo = w.lower()
+    if lo in _EXW: return _cap(w, _EXW[lo])
+    for l, c in _EXS:
+        if lo.startswith(l): return _cap(w, c) + w[len(l):]
+    return w
 def _c0(s):
     def rep(m):
         t = m.group(0); lo = t.lower(); st = m.start(); prev = s[st - 1] if st else " "
-        if len(lo) == 2 and lo[0] == "o" and not lo[1].isalpha(): r = "ў"
+        if len(lo) == 3 and lo[0] == "s" and lo[2] == "h": r = "сҳ"
+        elif lo == "ts" and re.match(r"(a|in(?![a-z])|inlar|iz)", s[m.end():m.end() + 5], re.I): r = "тс"
+        elif lo == "e" and prev.lower() in "aiouаиоуўэ": r = "э"
+        elif len(lo) == 2 and lo[0] == "o" and not lo[1].isalpha(): r = "ў"
         elif len(lo) == 2 and lo[0] == "g" and not lo[1].isalpha(): r = "ғ"
         elif t in "’ʼ": return "ъ"
         else:
@@ -97,39 +127,38 @@ def _c0(s):
         return r
     return _RX.sub(rep, s)
 def cyr(s):
-    parts = re.split(r"(<[^>]+>|\b(?:https?://)?[a-z]+\.(?:uz|com|org|ru|me)(?:/\S*)?|@\w+|\b(?![IVX]\. [A-ZʻO‘]{3})[IVXLC]+\b(?![ʻ‘'`ʼ’]))", s)
+    parts = re.split(r"(<[^>]+>|\b(?:https?://)?(?:www\.)?[a-z]+\.(?:uz|com|org|ru|me)(?:/\S*)?|@\w+|\b(?![IVX]\. [A-ZʻO‘]{3})[IVXLC]+\b(?![ʻ‘'`ʼ’]))", s)
     out = []
     for i, p in enumerate(parts):
         if i % 2: out.append(p); continue
         p = re.sub(r"(\d)-(yil|yanvar|fevral|mart|aprel|may|iyun|iyul|avgust|sentabr|oktabr|noyabr|dekabr)", r"\1 \2", p, flags=re.I)
-        p = _c0(p)
-        p = re.sub(r"(\d )(январ|феврал|апрел|июн|июл|сентабр|октабр|ноябр|декабр)(?![а-яёўқғҳъь])", lambda m: m.group(1) + _MON[m.group(2)], p)
+        p = _c0(re.sub(r"[A-Za-z]+", _exw, p))
+        p = re.sub(r"(^|[^а-яёўқғҳъьА-ЯЁЎҚҒҲ])(январ|феврал|апрел|июн|июл|сентябр|октябр|ноябр|декабр)(?![а-яёўқғҳъь])", lambda m: m.group(1) + _cap(m.group(2), _MON[m.group(2).lower()]), p, flags=re.I)
         out.append(p)
     return "".join(out)
 def T(u, s): return cyr(s) if u["cyr"] else s
 
 # ---------------- Kirish huquqi ----------------
 async def is_member(bot, uid):
+    """True/False; tekshirib bo'lmasa (bot kanalda admin emas) — None"""
     try:
         m = await bot.get_chat_member(CHANNEL, uid)
         return m.status in (ChatMemberStatus.MEMBER, ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR)
     except Exception as e:
-        logging.warning("a'zolikni tekshirib bo'lmadi: %s", e); return False
+        logging.warning("a'zolikni tekshirib bo'lmadi: %s", e); return None
+DEMO = set()   # demo savollar (pastda, platforma bazasi yuklangach to'ldiriladi)
 def need_level(qid):
-    """0 — demo, 1 — kanal, 2 — to'lov"""
-    q = Q[qid]; s = SRC[CH_SRC[q["c"]]]
-    if s["type"] == "darslik":
-        i = CH_IDX[q["c"]]; return 0 if i == 0 else 1 if i == 1 else 2
-    p = POS_IN_SRC[qid]; return 0 if p < FREE_N else 1 if p < CHANNEL_N else 2
-def chapter_level(cid):
-    s = SRC[CH_SRC[cid]]
-    if s["type"] == "darslik":
-        i = CH_IDX[cid]; return 0 if i == 0 else 1 if i == 1 else 2
-    return 0
-async def level_of(bot, u):
-    if u["paid"] or u["id"] in ADMINS: return 2
-    return 1 if await is_member(bot, u["id"]) else 0
-LOCK = {0: "", 1: "📢", 2: "🔒"}
+    """0 — demo, 2 — to'liq kirish"""
+    return 0 if qid in DEMO else 2
+def chapter_level(cid): return 0
+async def level_of(bot, u): return 2 if has_full(u) else 0
+LOCK = {0: "", 1: "🔒", 2: "🔒"}
+def until_text(u):
+    if u["id"] in ADMINS or u["paid"]: return "to‘liq kirish ochiq"
+    if (u.get("until") or 0) > time.time():
+        import datetime as _d
+        return "to‘liq kirish " + _d.datetime.fromtimestamp(u["until"], _d.timezone(_d.timedelta(hours=5))).strftime("%d.%m.%Y") + " gacha"
+    return "demo"
 
 # ---------------- Sessiya (xotirada) ----------------
 SES = {}   # uid -> {"list":[qid], "i":int, "rev":bool, "title":str, "res":{k,p,u}}
@@ -156,7 +185,7 @@ def highlight(text, ans, qq, is_src):
 def kora(s):
     if s["type"] != "qonun": return "Darslikka ko‘ra"
     return {"Kodeks": "Kodeksga ko‘ra", "Nizom": "Nizomga ko‘ra", "Farmon": "Farmonga ko‘ra", "Konstitutsiya": "Konstitutsiyaga ko‘ra"}.get(s.get("kind"), "Qonunga ko‘ra")
-def src_name(s): return s["title"] if s["type"] == "qonun" else f"“{s['title']}” · {s['grade']}"
+def src_name(s): return s["title"] if s["type"] == "qonun" else f"“{s['title']}” · {s['grade']} darsligi"
 def explain(q):
     s = SRC[CH_SRC[q["c"]]]; law = s["type"] == "qonun"
     ids = set(q["src"]); L = [k for k, v in SENT.items() if v["l"] == q["l"]] if law else [k for k in q["src"]]
@@ -207,37 +236,58 @@ async def show_card(bot, chat_id, u, msg: Message | None = None):
 
 # ---------------- Menyular ----------------
 WEBAPP_URL = os.getenv("WEBAPP_URL", "").rstrip("/")
+APP_NAME = "huquqsavoljavob"
 def main_kb(u):
-    top = [[B(text=T(u, "📱 Ilovani ochish (savol-javob platformasi)"), web_app=WebAppInfo(url=WEBAPP_URL + "/"))]] if WEBAPP_URL else []
-    if WEBAPP_URL and u["id"] in ADMINS: top.append([B(text="🛠 Admin panel", web_app=WebAppInfo(url=WEBAPP_URL + "/admin"))])
-    return InlineKeyboardMarkup(inline_keyboard=top + [
-        [B(text=T(u, "📘 Darsliklar (4)"), callback_data="books"), B(text=T(u, "⚖️ Qonunchilik hujjatlari (35)"), callback_data="laws:0")],
-        [B(text=T(u, "📊 O‘zlashtirish statistikasi"), callback_data="stat"), B(text=T(u, "🔁 Bilmaganlarim"), callback_data="redo")],
-        [B(text=T(u, "🔓 To‘liq kirish"), callback_data="buy"), B(text=("Lotin" if u["cyr"] else "Кирилл"), callback_data="script")]])
-WELCOME = ("<b>Onlayn savol-javob platformasi</b>\n(Huquqshunoslik fanlari bo‘yicha)\n\n"
-           "“Davlat va huquq asoslari” darsliklari (8–11-sinf) va 35 ta normativ-huquqiy hujjat bo‘yicha savol-javob kartochkalari.\n\n"
-           "🆓 <b>Demo:</b> har bir darslikning 1-bobi va har bir hujjatdan dastlabki 10 ta savol.\n"
-           "📢 <b>Kanalga a’zo bo‘lsangiz:</b> 2-boblar va hujjatlarning 11–20-savollari.\n"
-           "🔒 <b>To‘liq kirish:</b> barcha {n} ta savol-javob — {price} so‘m.")
+    rows = []
+    if WEBAPP_URL:
+        rows.append([B(text=T(u, "📱 § ilovasini ochish").replace("§", APP_NAME), web_app=WebAppInfo(url=WEBAPP_URL + "/"))])
+        if not has_full(u): rows.append([B(text=T(u, "🔓 To‘liq kirish — barcha savol-javoblar"), web_app=WebAppInfo(url=WEBAPP_URL + "/?buy=1"))])
+    rows.append([B(text=T(u, "📢 Kanal"), url=CHANNEL_URL), B(text=("Lotin" if u["cyr"] else "Кирилл"), callback_data="script")])
+    if WEBAPP_URL and u["id"] in ADMINS: rows.append([B(text="🛠 Admin panel", web_app=WebAppInfo(url=WEBAPP_URL + "/admin"))])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+def total_text():
+    n = len(PB["questions"]); return f"{n // 1000 * 1000:,}".replace(",", " ")
+WELCOME = ("<b>{app}</b> — huquqshunoslik fanlari bo‘yicha onlayn savol-javob platformasi\n\n"
+           "📚 <b>{n} dan ortiq savol-javob</b>:\n"
+           "• “Davlat va huquq asoslari” darsliklari (8–11-sinf) asosida;\n"
+           "• 35 ta qonunchilik hujjati (Konstitutsiya, kodekslar, qonunlar) asosida.\n\n"
+           "✨ <b>Imkoniyatlar:</b>\n"
+           "• savol-javob kartochkalari yoki oddiy matn ko‘rinishi;\n"
+           "• har bir javobga darslik yoki modda matnidan izoh;\n"
+           "• darslik, bob, mavzu, modda bo‘yicha tanlash; oddiy/murakkab daraja; o‘ylash vaqti;\n"
+           "• o‘zlashtirish statistikasi va bilmagan savollarni qayta ishlash;\n"
+           "• lotin va kirill yozuvi.\n\n"
+           "🆓 <b>Demo:</b> har bir mavzu va hujjatdan 5 tadan savol.\n"
+           "🔓 <b>To‘liq kirish:</b> kanalga obuna + admin tasdig‘i (oylik yoki yillik obuna).\n\n"
+           "Sizda: <b>{st}</b>\n👇 Ilovani oching")
+def welcome_text(u): return T(u, WELCOME.format(app="§", n=total_text(), st=until_text(u))).replace("§", APP_NAME)
 def fmt_price(): return f"{int(kv('price')):,}".replace(",", " ")
+def fmt_sum(v): return f"{int(v or 0):,}".replace(",", " ")
+WELCOME_IMG = BASE / "data" / "welcome.png"
 
 r = Router()
+
+async def send_welcome(bot, chat_id, u):
+    if WELCOME_IMG.exists():
+        try: return await bot.send_photo(chat_id, FSInputFile(WELCOME_IMG), caption=welcome_text(u), reply_markup=main_kb(u))
+        except Exception as e: logging.warning("welcome photo: %s", e)
+    await bot.send_message(chat_id, welcome_text(u), reply_markup=main_kb(u))
 
 @r.message(CommandStart())
 async def cmd_start(m: Message, command: CommandObject, bot: Bot):
     u = user(m.from_user.id, m.from_user.full_name)
-    if (command.args or "") == "buy" and not u["paid"]:
+    if (command.args or "") == "buy" and not has_full(u):
         return await offer_buy(m, u, bot)
-    await m.answer(T(u, WELCOME.format(n=len(Q), price=fmt_price())), reply_markup=main_kb(u))
+    await send_welcome(bot, m.chat.id, u)
 
 @r.callback_query(F.data == "home")
-async def cb_home(c: CallbackQuery):
-    u = user(c.from_user.id); await c.message.edit_text(T(u, WELCOME.format(n=len(Q), price=fmt_price())), reply_markup=main_kb(u)); await c.answer()
+async def cb_home(c: CallbackQuery, bot: Bot):
+    u = user(c.from_user.id); await c.answer(); await send_welcome(bot, c.message.chat.id, u)
 
 @r.callback_query(F.data == "script")
-async def cb_script(c: CallbackQuery):
+async def cb_script(c: CallbackQuery, bot: Bot):
     u = user(c.from_user.id); db.execute("update users set cyr=? where id=?", (0 if u["cyr"] else 1, u["id"])); db.commit()
-    await cb_home(c)
+    await cb_home(c, bot)
 
 @r.callback_query(F.data == "books")
 async def cb_books(c: CallbackQuery):
@@ -270,15 +320,14 @@ async def cb_src(c: CallbackQuery, bot: Bot):
             n = len(Q_BY_CH.get(c0["id"], [])); need = chapter_level(c0["id"])
             kb.append([B(text=T(u, f"{LOCK[need] if need > lv else ''} {c0['title'][:50]} ({n})").strip(), callback_data=f"ch:{c0['id']}")])
         kb.append([B(text=T(u, "⬅ Darsliklar"), callback_data="books")])
-        head = f"📘 <b>{html.escape(src_name(s))}</b>\n" + (f"Mualliflar: {html.escape(s['authors'])}\n" if s.get("authors") else "") + "\nBobni tanlang. 📢 — kanal a’zolari uchun, 🔒 — to‘liq kirish."
+        head = f"📘 <b>{html.escape(src_name(s))}</b>\n" + (f"Mualliflar: {html.escape(s['authors'])}\n" if s.get("authors") else "") + "\nBobni tanlang."
         await c.message.edit_text(T(u, head), reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
     else:
         qs = Q_BY_SRC.get(s["id"], []); n = len(qs)
-        avail = n if lv == 2 else min(n, CHANNEL_N if lv == 1 else FREE_N)
+        avail = n if lv == 2 else len([q for q in qs if q in DEMO])
         kb = [[B(text=T(u, f"▶ Boshlash ({avail} ta savol)"), callback_data=f"go:{s['id']}")]]
         if lv == 2:
             kb += [[B(text=T(u, f"{c0['title'][:50]} ({len(Q_BY_CH.get(c0['id'], []))})"), callback_data=f"ch:{c0['id']}")] for c0 in s["chapters"] if Q_BY_CH.get(c0["id"])][:40]
-        elif lv == 0: kb.append([B(text=T(u, "📢 11–20-savollar: kanalga a’zo bo‘lish"), callback_data="join")])
         if lv < 2: kb.append([B(text=T(u, f"🔒 Barcha {n} ta savol — to‘liq kirish"), callback_data="buy")])
         kb.append([B(text=T(u, "⬅ Qonunchilik hujjatlari"), callback_data=f"laws:{LAWS.index(s)//9}")])
         head = f"⚖️ <b>{html.escape(s['title'])}</b>\n{html.escape(s.get('kind',''))} · {html.escape(s.get('pub',''))}\n\nJami {n} ta savol. Sizga ochiq: {avail} ta."
@@ -381,120 +430,142 @@ async def cb_clr(c: CallbackQuery, bot: Bot):
 # ---------------- Kanal ----------------
 async def ask_join(msg: Message, u):
     kb = InlineKeyboardMarkup(inline_keyboard=[[B(text=T(u, "📢 Kanalga o‘tish"), url=CHANNEL_URL)], [B(text=T(u, "✅ A’zo bo‘ldim — tekshirish"), callback_data="chk")]])
-    await msg.answer(T(u, "Bu bo‘lim kanal a’zolari uchun ochiq: darsliklarning 2-bobi va har bir hujjatning 11–20-savollari.\n\nKanalga a’zo bo‘ling va “A’zo bo‘ldim” tugmasini bosing."), reply_markup=kb)
+    await msg.answer(T(u, "To‘liq kirish uchun avval kanalimizga obuna bo‘ling va “A’zo bo‘ldim” tugmasini bosing."), reply_markup=kb)
 @r.callback_query(F.data == "join")
 async def cb_join(c: CallbackQuery): await ask_join(c.message, user(c.from_user.id)); await c.answer()
 @r.callback_query(F.data == "chk")
 async def cb_chk(c: CallbackQuery, bot: Bot):
     u = user(c.from_user.id)
-    if await is_member(bot, u["id"]):
-        await c.message.edit_text(T(u, "✅ Rahmat! Kanal a’zolari uchun bo‘limlar ochildi."), reply_markup=main_kb(u))
+    if await is_member(bot, u["id"]) is not False: await c.answer(); await offer_buy(c.message, u, bot)
     else: await c.answer(T(u, "Hali kanalga a’zo bo‘lmagansiz."), show_alert=True)
 
-# ---------------- To'lov ----------------
+# ---------------- To'liq kirish so'rovi ----------------
+def tariffs_text():
+    return "\n".join(f"• {t_['name']} — " + (f"{fmt_sum(t_['price'])} so‘m" if t_["price"] > 0 else "bepul") for t_ in tariffs())
 async def offer_buy(msg: Message, u, bot: Bot):
-    price = int(kv("price"))
-    t = f"🔒 <b>To‘liq kirish</b>\n\nBarcha {len(Q)} ta savol-javob: 4 ta darslikning barcha boblari va 35 ta hujjatning barcha savollari.\n\nNarxi: <b>{fmt_price()} so‘m</b>."
-    if PROVIDER_TOKEN:
-        await msg.answer(T(u, t))
-        await bot.send_invoice(msg.chat.id, title="To‘liq kirish", description=f"Barcha {len(Q)} ta savol-javobga doimiy kirish", payload=f"full:{u['id']}",
-                               provider_token=PROVIDER_TOKEN, currency="UZS", prices=[LabeledPrice(label="To‘liq kirish", amount=price * 100)])
-    else:
-        await msg.answer(T(u, t + "\n\n" + kv("paytext") + f"\n\nSizning ID: <code>{u['id']}</code>"))
+    if has_full(u): return await msg.answer(T(u, "Sizda " + until_text(u) + " ✅"))
+    t = ("🔓 <b>To‘liq kirish — barcha savol-javoblar</b>\n\n" + tariffs_text() +
+         "\n\n1) kanalga obuna bo‘ling;\n2) ilovada muddatni tanlang, telefon raqamingizni va (pullik bo‘lsa) to‘lov chekini yuboring;\n3) admin tasdiqlagach to‘liq kirish ochiladi.")
+    kb = [[B(text=T(u, "🔓 Ilovada so‘rov yuborish"), web_app=WebAppInfo(url=WEBAPP_URL + "/?buy=1"))]] if WEBAPP_URL else []
+    kb.append([B(text=T(u, "📢 Kanalga o‘tish"), url=CHANNEL_URL)])
+    await msg.answer(T(u, t), reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
 @r.callback_query(F.data == "buy")
 async def cb_buy(c: CallbackQuery, bot: Bot):
-    u = user(c.from_user.id)
-    if u["paid"]: return await c.answer(T(u, "Sizda to‘liq kirish allaqachon ochiq ✅"), show_alert=True)
-    await offer_buy(c.message, u, bot); await c.answer()
+    u = user(c.from_user.id); await offer_buy(c.message, u, bot); await c.answer()
 @r.pre_checkout_query()
 async def pre_checkout(p: PreCheckoutQuery): await p.answer(ok=True)
 @r.message(F.successful_payment)
 async def paid(m: Message, bot: Bot):
-    sp = m.successful_payment; amt = sp.total_amount // 100; now = int(time.time())
-    auto = kv("auto_open") == "1"
-    db.execute("insert into receipts(uid,file_id,ftype,kind,amount,status,t,dt,note) values(?,?,?,?,?,?,?,?,?)",
-               (m.from_user.id, "", "", "invoice", amt, "ok" if auto else "pending", now, now if auto else None, sp.provider_payment_charge_id))
-    if auto:
-        db.execute("update users set paid=1 where id=?", (m.from_user.id,))
-        db.execute("insert into pays(uid,amount,kind,t,info) values(?,?,?,?,?)", (m.from_user.id, amt, "invoice", now, sp.provider_payment_charge_id))
-    db.commit()
-    u = user(m.from_user.id)
-    await m.answer(T(u, "✅ To‘lov qabul qilindi. Barcha savol-javoblar ochildi!" if auto else "✅ To‘lov qabul qilindi. Admin tasdiqlagach to‘liq kirish ochiladi va sizga xabar keladi."), reply_markup=main_kb(u))
-    await notify_admins(bot, f"💰 To‘lov: {html.escape(m.from_user.full_name)} (<code>{m.from_user.id}</code>) — {amt} so‘m" + ("" if auto else "\nTasdiqlash: admin paneldagi “Cheklar” bo‘limi."))
-# Qo'lda to'lov: foydalanuvchi chek (rasm) yuboradi → admin tasdiqlaydi
+    sp = m.successful_payment; amt = sp.total_amount // 100; now = int(time.time()); t0 = (tariffs() or [{"id": "", "months": 1}])[0]
+    db.execute("insert into receipts(uid,file_id,ftype,kind,amount,status,t,note,tariff,months) values(?,?,?,?,?,?,?,?,?,?)",
+               (m.from_user.id, "", "", "invoice", amt, "pending", now, sp.provider_payment_charge_id, t0["id"], t0["months"])); db.commit()
+    await m.answer("✅ To‘lov qabul qilindi. Admin tasdiqlagach to‘liq kirish ochiladi va sizga xabar keladi.")
+    await notify_admins(bot, f"💰 To‘lov: {html.escape(m.from_user.full_name)} (<code>{m.from_user.id}</code>) — {amt} so‘m\nTasdiqlash: admin paneldagi “Cheklar” bo‘limi.")
+@r.message(F.contact)
+async def got_contact(m: Message):
+    if m.contact and m.contact.user_id == m.from_user.id:
+        user(m.from_user.id); db.execute("update users set phone=? where id=?", (m.contact.phone_number, m.from_user.id)); db.commit()
+        await m.answer("✓ Telefon raqamingiz saqlandi.")
+# Chat orqali chek (rasm/fayl) → so'rov
 @r.message(F.photo | F.document)
 async def receipt(m: Message, bot: Bot):
     if m.from_user.id in ADMINS: return
     u = user(m.from_user.id, m.from_user.full_name)
     fid, ft = (m.photo[-1].file_id, "photo") if m.photo else (m.document.file_id, m.document.mime_type or "doc")
-    cur = db.execute("insert into receipts(uid,file_id,ftype,kind,amount,status,t) values(?,?,?,?,?,?,?)", (u["id"], fid, ft, "chek", int(kv("price")), "pending", int(time.time())))
+    t0 = next((x for x in tariffs() if x["price"] > 0), None) or (tariffs() or [{"id": "", "months": 1, "price": 0}])[0]
+    cur = db.execute("insert into receipts(uid,file_id,ftype,kind,amount,status,t,tariff,months,phone) values(?,?,?,?,?,?,?,?,?,?)",
+                     (u["id"], fid, ft, "chek", t0["price"], "pending", int(time.time()), t0["id"], t0["months"], u.get("phone")))
     db.commit(); rid = cur.lastrowid
-    for a in ADMINS:
-        try:
-            await m.forward(a)
-            await bot.send_message(a, f"🧾 Chek #{rid}: {html.escape(m.from_user.full_name)} (<code>{m.from_user.id}</code>)",
-                                   reply_markup=InlineKeyboardMarkup(inline_keyboard=[[B(text="✅ Tasdiqlash", callback_data=f"adm_ok:{rid}"), B(text="❌ Rad etish", callback_data=f"adm_no:{rid}")]]))
-        except Exception: pass
-    await m.answer(T(u, "Chek adminga yuborildi. Admin tasdiqlagach to‘liq kirish ochiladi va sizga xabar keladi."))
+    await send_request_to_admins(bot, rid, m=m)
+    await m.answer(T(u, "Chek adminga yuborildi. Admin tasdiqlagach to‘liq kirish ochiladi va sizga xabar keladi.\n\nMuddatni tanlash va telefon raqamini yuborish uchun ilovadagi “To‘liq kirish” tugmasidan foydalaning."))
 
 # ---------------- Admin ----------------
 def is_admin(uid): return uid in ADMINS
+def dstr(ts):
+    import datetime as _d
+    return _d.datetime.fromtimestamp(ts, _d.timezone(_d.timedelta(hours=5))).strftime("%d.%m.%Y")
 @r.message(Command("admin"))
 async def adm(m: Message):
     if not is_admin(m.from_user.id): return
-    nu = db.execute("select count(*), sum(paid) from users").fetchone()
+    nu = db.execute("select count(*) from users").fetchone()[0]
+    act = db.execute("select count(*) from users where paid=1 or until>?", (int(time.time()),)).fetchone()[0]
+    pend = db.execute("select count(*) from receipts where status='pending'").fetchone()[0]
     kb = InlineKeyboardMarkup(inline_keyboard=[[B(text="🛠 Admin panelni ochish", web_app=WebAppInfo(url=WEBAPP_URL + "/admin"))]]) if WEBAPP_URL else None
-    await m.answer(reply_markup=kb, text=f"<b>Admin</b>\nFoydalanuvchilar: {nu[0]}, to‘lov qilganlar: {nu[1] or 0}\nNarx: {fmt_price()} so‘m\n\n"
-                   "/narx 500000 — narxni o‘zgartirish\n/ochish ID — to‘liq kirishni ochish\n/yopish ID — yopish\n"
-                   "/tolov_matni matn — qo‘lda to‘lov yo‘riqnomasi (karta raqami va h.k.)\n/xabar matn — barcha foydalanuvchilarga xabar")
-@r.message(Command("narx"))
-async def adm_price(m: Message, command: CommandObject):
-    if not is_admin(m.from_user.id): return
-    v = re.sub(r"\D", "", command.args or "")
-    if not v: return await m.answer("Masalan: /narx 500000")
-    set_kv("price", int(v)); await m.answer(f"✓ Yangi narx: {fmt_price()} so‘m")
-@r.message(Command("tolov_matni"))
-async def adm_paytext(m: Message, command: CommandObject):
-    if not is_admin(m.from_user.id): return
-    if not command.args: return await m.answer("Joriy matn:\n" + kv("paytext"))
-    set_kv("paytext", command.args); await m.answer("✓ Saqlandi")
+    await m.answer(reply_markup=kb, text=f"<b>Admin</b>\nFoydalanuvchilar: {nu}, to‘liq kirishli: {act}, tasdiq kutayotgan: {pend}\n\nTariflar:\n{tariffs_text()}\n\n"
+                   "Tariflar, cheklar, foydalanuvchilar — admin panelda.\n/ochish ID [oy] — to‘liq kirishni ochish (oy ko‘rsatilmasa — muddatsiz)\n/yopish ID — yopish\n/xabar matn — barcha foydalanuvchilarga xabar")
 async def notify_admins(bot, text):
     kb = InlineKeyboardMarkup(inline_keyboard=[[B(text="🛠 Admin panel", web_app=WebAppInfo(url=WEBAPP_URL + "/admin"))]]) if WEBAPP_URL else None
     for a in ADMINS:
         try: await bot.send_message(a, text, reply_markup=kb)
         except Exception: pass
-async def set_paid(bot, uid, v, admin, amount=None, kind="manual"):
-    user(uid); db.execute("update users set paid=? where id=?", (v, uid))
-    if v and amount: db.execute("insert into pays(uid,amount,kind,t,info) values(?,?,?,?,?)", (uid, int(amount), kind, int(time.time()), f"admin {admin}"))
-    db.commit()
-    try: await bot.send_message(uid, "✅ To‘liq kirish ochildi! /start" if v else "To‘liq kirish yopildi.")
+def rcpt_caption(rid):
+    r_ = db.execute("select r.uid,u.name,r.amount,r.tariff,r.months,r.phone,r.kind from receipts r left join users u on u.id=r.uid where r.id=?", (rid,)).fetchone()
+    t_ = tariff(r_[3]) or {}
+    return (f"🧾 <b>So‘rov #{rid}</b>: {html.escape(r_[1] or '—')} (<code>{r_[0]}</code>)\n📞 {html.escape(r_[5] or '—')}\n"
+            f"🗓 {html.escape(t_.get('name') or (str(r_[4]) + ' oy'))} — {fmt_sum(r_[2])} so‘m" + ("" if r_[2] else " (bepul, chek talab qilinmaydi)"))
+async def send_request_to_admins(bot, rid, m: Message | None = None, data: bytes | None = None, fname="chek", ctype=""):
+    kb = InlineKeyboardMarkup(inline_keyboard=[[B(text="✅ Tasdiqlash", callback_data=f"adm_ok:{rid}"), B(text="❌ Rad etish", callback_data=f"adm_no:{rid}")]] +
+                              ([[B(text="🛠 Admin panelda ko‘rish (muddat/summani tanlash)", web_app=WebAppInfo(url=WEBAPP_URL + "/admin"))]] if WEBAPP_URL else []))
+    cap = rcpt_caption(rid); fid = None
+    for a in ADMINS:
+        try:
+            if m is not None:
+                await m.forward(a); await bot.send_message(a, cap, reply_markup=kb)
+            elif data:
+                from aiogram.types import BufferedInputFile
+                f = BufferedInputFile(data, filename=fname)
+                msg = await (bot.send_photo(a, f, caption=cap, reply_markup=kb) if ctype.startswith("image/") else bot.send_document(a, f, caption=cap, reply_markup=kb))
+                if not fid: fid = msg.photo[-1].file_id if msg.photo else (msg.document.file_id if msg.document else None)
+            else: await bot.send_message(a, cap, reply_markup=kb)
+        except Exception as e: logging.warning("adminga yuborib bo'lmadi: %s", e)
+    if fid: db.execute("update receipts set file_id=? where id=? and (file_id is null or file_id='')", (fid, rid)); db.commit()
+async def grant(bot, uid, months, admin, amount=None, kind="manual"):
+    """months > 0 — shuncha oyga (mavjud muddat ustiga), 0/None — muddatsiz"""
+    u = user(uid); now = int(time.time())
+    if months and int(months) > 0:
+        base = max(now, u.get("until") or 0); until = add_months(base, int(months))
+        db.execute("update users set until=?, warned=null where id=?", (until, uid)); msg = f"✅ To‘liq kirish ochildi: {dstr(until)} gacha.\nIlovani qayta oching — barcha savol-javoblar ochiq."
+    else:
+        db.execute("update users set paid=1 where id=?", (uid,)); msg = "✅ To‘liq kirish ochildi (muddatsiz).\nIlovani qayta oching — barcha savol-javoblar ochiq."
+    if amount: db.execute("insert into pays(uid,amount,kind,t,info) values(?,?,?,?,?)", (uid, int(amount), kind, now, f"admin {admin}; {months or 'muddatsiz'} oy"))
+    db.commit(); u = user(uid)
+    try: await bot.send_message(uid, T(u, msg), reply_markup=main_kb(u))
+    except Exception: pass
+async def revoke(bot, uid):
+    user(uid); db.execute("update users set paid=0, until=null where id=?", (uid,)); db.commit()
+    try: await bot.send_message(uid, "To‘liq kirish yopildi.")
     except Exception: pass
 @r.message(Command("ochish"))
 async def adm_open(m: Message, command: CommandObject, bot: Bot):
     if not is_admin(m.from_user.id): return
-    if not (command.args or "").strip().isdigit(): return await m.answer("Masalan: /ochish 123456789")
-    await set_paid(bot, int(command.args), 1, m.from_user.id); await m.answer("✓ Ochildi (to‘lov summasi yozilmadi — kerak bo‘lsa admin panelda chekni tasdiqlang)")
+    a = (command.args or "").split()
+    if not a or not a[0].isdigit(): return await m.answer("Masalan: /ochish 123456789 12  (12 oyga) yoki /ochish 123456789 (muddatsiz)")
+    await grant(bot, int(a[0]), int(a[1]) if len(a) > 1 and a[1].isdigit() else 0, m.from_user.id); await m.answer("✓ Ochildi")
 @r.message(Command("yopish"))
 async def adm_close(m: Message, command: CommandObject, bot: Bot):
     if not is_admin(m.from_user.id): return
     if not (command.args or "").strip().isdigit(): return await m.answer("Masalan: /yopish 123456789")
-    await set_paid(bot, int(command.args), 0, m.from_user.id); await m.answer("✓ Yopildi")
+    await revoke(bot, int(command.args)); await m.answer("✓ Yopildi")
 @r.callback_query(F.data.startswith("adm_"))
 async def adm_cb(c: CallbackQuery, bot: Bot):
     if not is_admin(c.from_user.id): return await c.answer()
     act, rid = c.data[4:].split(":"); res = await receipt_act(bot, int(rid), act, c.from_user.id)
-    try: await c.message.edit_text(c.message.html_text + ("\n✅ Tasdiqlandi" if act == "ok" else "\n❌ Rad etildi") + (f" ({res})" if res else ""))
+    tail = ("\n✅ Tasdiqlandi" if act == "ok" else "\n❌ Rad etildi") + (f" ({res})" if res else "")
+    try:
+        if c.message.caption is not None: await c.message.edit_caption(caption=c.message.html_text + tail)
+        else: await c.message.edit_text(c.message.html_text + tail)
     except Exception: pass
     await c.answer(res or "✓")
-async def receipt_act(bot, rid, act, admin, amount=None, note=""):
-    r_ = db.execute("select uid,amount,status,kind from receipts where id=?", (rid,)).fetchone()
+async def receipt_act(bot, rid, act, admin, amount=None, note="", months=None):
+    r_ = db.execute("select uid,amount,status,kind,months from receipts where id=?", (rid,)).fetchone()
     if not r_: return "chek topilmadi"
     if r_[2] != "pending": return "allaqachon ko‘rib chiqilgan"
-    uid, amt = r_[0], int(amount or r_[1] or 0)
-    db.execute("update receipts set status=?, dt=?, admin=?, amount=?, note=? where id=?", ("ok" if act == "ok" else "no", int(time.time()), admin, amt, note, rid)); db.commit()
-    if act == "ok": await set_paid(bot, uid, 1, admin, amt, r_[3])
+    uid = r_[0]; amt = int(r_[1] or 0) if amount in (None, "") else int(amount)
+    mon = int(r_[4] or 1) if months in (None, "") else int(months)
+    db.execute("update receipts set status=?, dt=?, admin=?, amount=?, months=?, note=? where id=?", ("ok" if act == "ok" else "no", int(time.time()), admin, amt, mon, note, rid)); db.commit()
+    if act == "ok": await grant(bot, uid, mon, admin, amt, r_[3])
     else:
-        try: await bot.send_message(uid, "To‘lov tasdiqlanmadi." + (f" Sabab: {html.escape(note)}" if note else "") + " Savollar bo‘lsa admin bilan bog‘laning.")
+        try: await bot.send_message(uid, "So‘rovingiz tasdiqlanmadi." + (f" Sabab: {html.escape(note)}" if note else "") + " Savollar bo‘lsa admin bilan bog‘laning.")
         except Exception: pass
     return ""
 @r.message(Command("xabar"))
@@ -511,15 +582,30 @@ PB = json.loads((BASE / "data" / "platform_bank.json").read_text(encoding="utf-8
 APP_TPL = (BASE / "web" / "app.html").read_text(encoding="utf-8")
 LOADER = (BASE / "web" / "loader.html").read_text(encoding="utf-8")
 ADMIN_HTML = (BASE / "web" / "admin.html").read_text(encoding="utf-8")
+# Demo: darsliklarning har bir mavzusidan (dars) va har bir qonunchilik hujjatidan DEMO_N tadan savol (matn tartibida)
+_SIDX = {s_["id"]: i for i, s_ in enumerate(PB["sentences"])}
+_SL = {s_["id"]: s_["l"] for s_ in PB["sentences"]}
+_SSEC = {s_["id"]: s_.get("sec") for s_ in PB["sentences"]}
+_CHPB = {c_["id"]: c_ for c_ in PB["chapters"]}
+_L2SRC = {l_["id"]: s_ for s_ in PB["sources"] for cid in s_["chapters"] if cid in _CHPB for l_ in _CHPB[cid]["lessons"]}
+_grp = {}
+for q_ in sorted(PB["questions"], key=lambda q_: (_SIDX.get(q_["src"][0], 10 ** 9), q_["id"])):
+    l_ = _SL.get(q_["src"][0]); s_ = _L2SRC.get(l_)
+    _grp.setdefault(l_ if (s_ and s_["type"] == "darslik") else (s_["id"] if s_ else l_), []).append(q_["id"])
+DEMO.update(qid for g in _grp.values() for qid in g[:DEMO_N])
+FULLC = {}   # bo'lim kaliti (dars:bo'lim) → [oddiy, murakkab] — demo'da haqiqiy sonlarni ko'rsatish uchun
+for q_ in PB["questions"]:
+    sid = q_["src"][0]; k_ = f"{_SL.get(sid)}:{_SSEC.get(sid)}"
+    FULLC.setdefault(k_, [0, 0])[0 if q_.get("lvl") == "o" else 1] += 1
 _APP_CACHE = {}
 def app_html(level):
     if level not in _APP_CACHE:
-        qs = [q for q in PB["questions"] if q["id"] not in Q or need_level(q["id"]) <= level]
-        sent_l = {}
-        for s_ in PB["sentences"]: sent_l[s_["id"]] = s_["l"]
-        used_l = {sent_l.get(q["src"][0]) for q in qs}
-        sents = [s_ for s_ in PB["sentences"] if s_["l"] in used_l]
+        full = level >= 2
+        qs = PB["questions"] if full else [q for q in PB["questions"] if q["id"] in DEMO]
+        used_l = {_SL.get(q["src"][0]) for q in qs}
+        sents = PB["sentences"] if full else [s_ for s_ in PB["sentences"] if s_["l"] in used_l]
         b = dict(PB, questions=qs, sentences=sents)
+        if not full: b["full"] = FULLC
         js = json.dumps(b, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
         _APP_CACHE[level] = (APP_TPL.replace("__BANK__", js), len(PB["questions"]) - len(qs))
     return _APP_CACHE[level]
@@ -532,15 +618,56 @@ def check_init_data(init_data: str):
         if time.time() - int(data.get("auth_date", "0")) > 86400 * 2: return None
         return json.loads(data.get("user", "{}"))
     except Exception: return None
+def tg_user(init):
+    tu = check_init_data(init or "")
+    if not tu or "id" not in tu: return None
+    return user(int(tu["id"]), (tu.get("first_name", "") + " " + tu.get("last_name", "")).strip())
+def pub_tariffs(): return [{"id": t_["id"], "name": t_["name"], "months": int(t_["months"]), "price": int(t_["price"])} for t_ in tariffs()]
 def make_web(bot):
     async def index(req): return web.Response(text=LOADER, content_type="text/html")
     async def app(req):
-        tu = check_init_data(await req.text())
-        if not tu or "id" not in tu: return web.Response(status=403, text="Telegram orqali oching")
-        u = user(int(tu["id"]), (tu.get("first_name", "") + " " + tu.get("last_name", "")).strip())
+        u = tg_user(await req.text())
+        if not u: return web.Response(status=403, text="Telegram orqali oching")
         lv = await level_of(bot, u); html_, locked = app_html(lv)
-        mini = json.dumps({"level": lv, "locked": locked, "price": fmt_price(), "channel_url": CHANNEL_URL, "bot_url": "https://t.me/huquqsavoljavob_bot"}, ensure_ascii=False)
-        return web.Response(text=html_.replace("__MINI__", mini, 1), content_type="text/html")
+        pending = bool(db.execute("select 1 from receipts where uid=? and status='pending' limit 1", (u["id"],)).fetchone())
+        mem = None if lv >= 2 else await is_member(bot, u["id"])
+        mini = json.dumps({"level": lv, "locked": locked, "until": (u["until"] if not u["paid"] and u["id"] not in ADMINS and (u.get("until") or 0) > time.time() else None),
+                           "pending": pending, "member": mem is not False, "tariffs": pub_tariffs(), "paytext": kv("paytext"), "phone": u.get("phone") or "",
+                           "channel_url": CHANNEL_URL, "bot_url": "https://t.me/huquqsavoljavob_bot", "total": len(PB["questions"]), "demo_n": DEMO_N}, ensure_ascii=False)
+        return web.Response(text=html_.replace("__MINI__", mini.replace("</", "<\\/"), 1), content_type="text/html")
+    async def api_check(req):
+        form = await req.post(); u = tg_user(form.get("init"))
+        if not u: return web.json_response({"error": "Telegram orqali oching"}, status=403)
+        return web.json_response({"member": (await is_member(bot, u["id"])) is not False})
+    async def api_request(req):
+        form = await req.post(); u = tg_user(form.get("init"))
+        if not u: return web.json_response({"error": "Telegram orqali oching"}, status=403)
+        if has_full(u): return web.json_response({"error": "Sizda to‘liq kirish allaqachon ochiq. Ilovani qayta oching."})
+        if await is_member(bot, u["id"]) is False: return web.json_response({"need_channel": True, "error": "Avval kanalga obuna bo‘ling."})
+        if db.execute("select count(*) from receipts where uid=? and status='pending'", (u["id"],)).fetchone()[0] >= 3:
+            return web.json_response({"error": "Sizda ko‘rib chiqilayotgan so‘rovlar bor. Admin javobini kuting."})
+        t_ = tariff(form.get("tariff") or "") or (tariffs() or [None])[0]
+        if not t_: return web.json_response({"error": "Tarif topilmadi"})
+        phone = re.sub(r"[^\d+]", "", str(form.get("phone") or ""))[:20]
+        if len(re.sub(r"\D", "", phone)) < 9: return web.json_response({"error": "Telefon raqamini to‘liq kiriting."})
+        f = form.get("file"); data = None; ctype = ""; fname = "chek"
+        if f is not None and hasattr(f, "file"):
+            data = f.file.read(); ctype = f.content_type or ""; fname = os.path.basename(f.filename or "chek")[:60]
+            if len(data) > 10 * 1024 * 1024: return web.json_response({"error": "Fayl hajmi 10 MB dan oshmasin."})
+            if not (ctype.startswith("image/") or ctype == "application/pdf"): return web.json_response({"error": "Faqat rasm yoki PDF yuboring."})
+        if int(t_["price"]) > 0 and not data: return web.json_response({"error": "To‘lov chekini biriktiring."})
+        db.execute("update users set phone=? where id=?", (phone, u["id"]))
+        cur = db.execute("insert into receipts(uid,file_id,ftype,kind,amount,status,t,tariff,months,phone) values(?,?,?,?,?,?,?,?,?,?)",
+                         (u["id"], "", ("photo" if ctype.startswith("image/") else ctype), "mini", int(t_["price"]), "pending", int(time.time()), t_["id"], int(t_["months"]), phone))
+        rid = cur.lastrowid
+        if data:
+            ext = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/heic": ".heic", "application/pdf": ".pdf"}.get(ctype, "")
+            path = RCPT_DIR / f"{rid}{ext}"; path.write_bytes(data); db.execute("update receipts set path=?, note=? where id=?", (str(path), ctype, rid))
+        db.commit()
+        if kv("auto_open") == "1":
+            await receipt_act(bot, rid, "ok", 0); return web.json_response({"ok": True, "auto": True})
+        await send_request_to_admins(bot, rid, data=data, fname=fname, ctype=ctype)
+        return web.json_response({"ok": True})
     # ---- Admin panel ----
     async def admin_page(req): return web.Response(text=ADMIN_HTML, content_type="text/html")
     PANEL_PW = os.getenv("ADMIN_PANEL_PASSWORD", "")
@@ -561,8 +688,7 @@ def make_web(bot):
         except Exception: body = {}
         aid = adm_user(body.get("init"))
         if not aid: return web.json_response({"error": "ruxsat yo‘q"}, status=403)
-        act = req.match_info["act"]; now = int(time.time()); day = now - now % 86400 - 5 * 3600
-        if day + 86400 <= now: day += 86400
+        act = req.match_info["act"]; now = int(time.time())
         import datetime as _dt
         t0 = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=5)))
         month = int(t0.replace(day=1, hour=0, minute=0, second=0, microsecond=0).timestamp())
@@ -572,38 +698,50 @@ def make_web(bot):
             return web.json_response(dict(
                 users=q1("select count(*) from users"), new_today=q1("select count(*) from users where created>=?", today),
                 new_week=q1("select count(*) from users where created>=?", now - 7 * 86400), active_week=q1("select count(*) from users where last>=?", now - 7 * 86400),
-                paid=q1("select count(*) from users where paid=1"), revenue=q1("select sum(amount) from pays"),
+                paid=q1("select count(*) from users where paid=1 or until>?", now), expiring=q1("select count(*) from users where until>? and until<?", now, now + 7 * 86400),
+                revenue=q1("select sum(amount) from pays"),
                 revenue_month=q1("select sum(amount) from pays where t>=?", month), revenue_today=q1("select sum(amount) from pays where t>=?", today),
                 pays=q1("select count(*) from pays"), pending=q1("select count(*) from receipts where status='pending'"),
-                answers=q1("select sum(n) from prog"), price=int(kv("price")), paytext=kv("paytext"), auto_open=kv("auto_open") == "1",
-                questions=len(Q),
+                answers=q1("select sum(n) from prog"), tariffs=pub_tariffs(), paytext=kv("paytext"), auto_open=kv("auto_open") == "1",
+                questions=len(PB["questions"]), demo=len(DEMO),
                 daily=[[r_[0], r_[1]] for r_ in db.execute("select date(t,'unixepoch','+5 hours') d, sum(amount) from pays where t>=? group by d order by d", (now - 30 * 86400,))],
                 signups=[[r_[0], r_[1]] for r_ in db.execute("select date(created,'unixepoch','+5 hours') d, count(*) from users where created>=? group by d order by d", (now - 30 * 86400,))]))
         if act == "receipts":
             st = body.get("status", "pending")
-            rows = db.execute("select r.id,r.uid,u.name,r.kind,r.ftype,r.amount,r.status,r.t,r.dt,r.note from receipts r left join users u on u.id=r.uid where (?='all' or r.status=?) order by r.id desc limit 200", (st, st)).fetchall()
-            return web.json_response([dict(zip(["id", "uid", "name", "kind", "ftype", "amount", "status", "t", "dt", "note"], r_)) for r_ in rows])
+            rows = db.execute("select r.id,r.uid,u.name,r.kind,r.ftype,r.amount,r.status,r.t,r.dt,r.note,r.tariff,r.months,coalesce(r.phone,u.phone),(coalesce(r.path,'')<>'' or coalesce(r.file_id,'')<>''),u.until "
+                              "from receipts r left join users u on u.id=r.uid where (?='all' or r.status=?) order by r.id desc limit 200", (st, st)).fetchall()
+            return web.json_response([dict(zip(["id", "uid", "name", "kind", "ftype", "amount", "status", "t", "dt", "note", "tariff", "months", "phone", "has_file", "until"], r_)) for r_ in rows])
         if act == "receipt_act":
-            res = await receipt_act(bot, int(body["id"]), body["act"], aid, body.get("amount"), body.get("note", ""))
+            res = await receipt_act(bot, int(body["id"]), body["act"], aid, body.get("amount"), body.get("note", ""), body.get("months"))
             return web.json_response({"ok": not res, "msg": res})
         if act == "users":
             qq = (body.get("q") or "").strip(); off = int(body.get("offset", 0)); flt = body.get("filter", "all")
             where, args = ["1=1"], []
-            if qq: where.append("(cast(id as text) like ? or name like ?)"); args += [f"%{qq}%", f"%{qq}%"]
-            if flt == "paid": where.append("paid=1")
-            if flt == "free": where.append("paid=0")
+            if qq: where.append("(cast(id as text) like ? or name like ? or phone like ?)"); args += [f"%{qq}%"] * 3
+            if flt == "paid": where.append("(paid=1 or until>?)"); args.append(now)
+            if flt == "free": where.append("not (paid=1 or coalesce(until,0)>?)"); args.append(now)
+            if flt == "exp": where.append("until>? and until<?"); args += [now, now + 7 * 86400]
             w = " and ".join(where)
-            rows = db.execute(f"select id,name,paid,created,last,(select sum(n) from prog where uid=users.id) from users where {w} order by created desc limit 50 offset ?", (*args, off)).fetchall()
+            rows = db.execute(f"select id,name,paid,created,last,(select sum(n) from prog where uid=users.id),until,phone from users where {w} order by created desc limit 50 offset ?", (*args, off)).fetchall()
             tot = db.execute(f"select count(*) from users where {w}", args).fetchone()[0]
-            return web.json_response({"total": tot, "rows": [dict(zip(["id", "name", "paid", "created", "last", "answers"], r_)) for r_ in rows]})
+            return web.json_response({"total": tot, "now": now, "rows": [dict(zip(["id", "name", "paid", "created", "last", "answers", "until", "phone"], r_)) for r_ in rows]})
         if act == "user_set":
-            await set_paid(bot, int(body["id"]), 1 if body.get("paid") else 0, aid, body.get("amount") or None)
+            if body.get("paid"): await grant(bot, int(body["id"]), int(body.get("months") or 0), aid, body.get("amount") or None)
+            else: await revoke(bot, int(body["id"]))
             return web.json_response({"ok": True})
         if act == "pays":
             rows = db.execute("select p.id,p.uid,u.name,p.amount,p.kind,p.t,p.info from pays p left join users u on u.id=p.uid order by p.id desc limit 300").fetchall()
             return web.json_response([dict(zip(["id", "uid", "name", "amount", "kind", "t", "info"], r_)) for r_ in rows])
         if act == "settings":
-            if body.get("price"): set_kv("price", int(re.sub(r"\D", "", str(body["price"])) or kv("price")))
+            if body.get("tariffs") is not None:
+                out = []
+                for i_, x in enumerate(body["tariffs"]):
+                    try: mo = max(1, min(120, int(x.get("months") or 1))); pr = max(0, int(re.sub(r"\D", "", str(x.get("price") or 0)) or 0))
+                    except Exception: continue
+                    nm = str(x.get("name") or "").strip()[:60] or (f"{mo // 12} yillik obuna" if mo % 12 == 0 else f"{mo} oylik obuna")
+                    out.append({"id": str(x.get("id") or f"t{int(time.time())}{i_}")[:20], "name": nm, "months": mo, "price": pr})
+                if not out: return web.json_response({"ok": False, "msg": "Kamida bitta tarif kerak"})
+                set_kv("tariffs", json.dumps(out, ensure_ascii=False))
             if body.get("paytext") is not None: set_kv("paytext", body["paytext"])
             if body.get("auto_open") is not None: set_kv("auto_open", 1 if body["auto_open"] else 0)
             return web.json_response({"ok": True})
@@ -619,15 +757,34 @@ def make_web(bot):
         return web.json_response({"error": "noma’lum"}, status=404)
     async def file_(req):
         if not adm_user(req.query.get("init")): return web.Response(status=403)
-        r_ = db.execute("select file_id,ftype from receipts where id=?", (int(req.match_info["rid"]),)).fetchone()
-        if not r_ or not r_[0]: return web.Response(status=404)
+        r_ = db.execute("select file_id,ftype,path,note from receipts where id=?", (int(req.match_info["rid"]),)).fetchone()
+        if not r_: return web.Response(status=404)
+        if r_[2] and Path(r_[2]).exists():
+            p_ = Path(r_[2]); ct = {".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".heic": "image/heic", ".pdf": "application/pdf"}.get(p_.suffix, "application/octet-stream")
+            return web.Response(body=p_.read_bytes(), content_type=ct)
+        if not r_[0]: return web.Response(status=404)
         f = await bot.get_file(r_[0]); buf = await bot.download_file(f.file_path)
         ct = "image/jpeg" if r_[1] == "photo" else (r_[1] if "/" in (r_[1] or "") else "application/octet-stream")
         return web.Response(body=buf.read(), content_type=ct)
-    a = web.Application(client_max_size=1 << 20)
+    a = web.Application(client_max_size=12 << 20)
     a.router.add_get("/", index); a.router.add_post("/app", app)
+    a.router.add_post("/api/check", api_check); a.router.add_post("/api/request", api_request)
     a.router.add_get("/admin", admin_page); a.router.add_post("/admin/login", login); a.router.add_post("/admin/api/{act}", api); a.router.add_get("/admin/file/{rid}", file_)
     return a
+
+async def remind_loop(bot):
+    """Obuna tugashiga 3 kun qolganda bir marta eslatish"""
+    while True:
+        try:
+            now = int(time.time())
+            for uid, until in db.execute("select id,until from users where until>? and until<? and coalesce(warned,0)<>until", (now, now + 3 * 86400)).fetchall():
+                try:
+                    u = user(uid)
+                    await bot.send_message(uid, T(u, f"⏳ To‘liq kirish muddati {dstr(until)} da tugaydi. Uzaytirish uchun ilovada “To‘liq kirish” tugmasini bosing."), reply_markup=main_kb(u))
+                except Exception: pass
+                db.execute("update users set warned=? where id=?", (until, uid)); db.commit()
+        except Exception as e: logging.warning("remind: %s", e)
+        await asyncio.sleep(3600)
 
 async def main():
     bot = Bot(TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
@@ -636,9 +793,14 @@ async def main():
     runner = web.AppRunner(make_web(bot)); await runner.setup()
     await web.TCPSite(runner, "0.0.0.0", int(os.getenv("PORT", "8080"))).start()
     if WEBAPP_URL:
-        try: await bot.set_chat_menu_button(menu_button=MenuButtonWebApp(text="📚 Ilova", web_app=WebAppInfo(url=WEBAPP_URL + "/")))
+        try: await bot.set_chat_menu_button(menu_button=MenuButtonWebApp(text=APP_NAME, web_app=WebAppInfo(url=WEBAPP_URL + "/")))
         except Exception as e: logging.warning("menu button: %s", e)
-    for lv in (0, 1, 2): app_html(lv)   # oldindan tayyorlab qo'yish
+    try:
+        await bot.set_my_description(f"{APP_NAME} — huquqshunoslik fanlari bo‘yicha onlayn savol-javob platformasi.\n\n📚 {total_text()} dan ortiq savol-javob: “Davlat va huquq asoslari” darsliklari (8–11-sinf) va 35 ta qonunchilik hujjati asosida.\n\n✨ Kartochkalar, darslik/modda matnidan izohlar, mavzu va modda bo‘yicha tanlash, o‘zlashtirish statistikasi, lotin va kirill yozuvi.\n\n🆓 Demo bepul. «Start» ni bosing.")
+        await bot.set_my_short_description(f"{total_text()} dan ortiq huquqiy savol-javob: 4 ta darslik va 35 ta qonunchilik hujjati asosida.")
+    except Exception as e: logging.warning("description: %s", e)
+    for lv in (0, 2): app_html(lv)   # oldindan tayyorlab qo'yish
+    asyncio.create_task(remind_loop(bot))
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
