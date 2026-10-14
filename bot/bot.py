@@ -49,7 +49,8 @@ BOOKS = [s for s in BANK["sources"] if s["type"] == "darslik"]
 LAWS = [s for s in BANK["sources"] if s["type"] == "qonun"]
 
 # ---------------- Baza ----------------
-db = sqlite3.connect(BASE / "bot.sqlite3")
+DB_PATH = Path(os.getenv("DB_PATH", str(BASE / "bot.sqlite3"))); DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+db = sqlite3.connect(DB_PATH)
 db.executescript("""
 create table if not exists users(id integer primary key, name text, paid integer default 0, cyr integer default 0, created integer);
 create table if not exists prog(uid integer, qid text, g text, n integer default 0, t integer, primary key(uid,qid));
