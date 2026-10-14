@@ -1,0 +1,13 @@
+<!doctype html><html lang="uz"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Savol-javob</title><script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>body{margin:0;font:16px system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;background:#f4f5f3;color:#1d2a26}
+.s{width:42px;height:42px;border:4px solid #cfe3dc;border-top-color:#0f6e5c;border-radius:50%;animation:r 1s linear infinite;margin:0 auto 14px}@keyframes r{to{transform:rotate(360deg)}}</style></head>
+<body><div style="text-align:center"><div class="s"></div><div id="m">Savol-javoblar yuklanmoqda…</div></div>
+<script>
+const W=window.Telegram&&Telegram.WebApp; try{W.ready();W.expand();}catch(e){}
+const d=W?W.initData:"";
+if(!d){document.getElementById("m").textContent="Bu ilova Telegram ichida ochiladi: @huquqsavoljavob_bot";}
+else fetch("app",{method:"POST",headers:{"Content-Type":"text/plain"},body:d}).then(r=>{if(!r.ok) throw r.status; return r.text();})
+ .then(h=>{document.open();document.write(h);document.close();})
+ .catch(e=>{document.getElementById("m").textContent="Yuklab bo‘lmadi ("+e+"). Ilovani qayta oching.";});
+</script></body></html>

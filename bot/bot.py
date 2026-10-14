@@ -15,7 +15,10 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode, ChatMemberStatus
 from aiogram.filters import Command, CommandStart, CommandObject
 from aiogram.types import (Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton as B,
-                           FSInputFile, LabeledPrice, PreCheckoutQuery)
+                           FSInputFile, LabeledPrice, PreCheckoutQuery, WebAppInfo, MenuButtonWebApp)
+import hmac, hashlib
+from urllib.parse import parse_qsl
+from aiohttp import web
 
 load_dotenv()
 BASE = Path(__file__).parent
@@ -195,8 +198,10 @@ async def show_card(bot, chat_id, u, msg: Message | None = None):
     await bot.send_message(chat_id, text, reply_markup=kb)
 
 # ---------------- Menyular ----------------
+WEBAPP_URL = os.getenv("WEBAPP_URL", "").rstrip("/")
 def main_kb(u):
-    return InlineKeyboardMarkup(inline_keyboard=[
+    top = [[B(text=T(u, "📱 Ilovani ochish (savol-javob platformasi)"), web_app=WebAppInfo(url=WEBAPP_URL + "/"))]] if WEBAPP_URL else []
+    return InlineKeyboardMarkup(inline_keyboard=top + [
         [B(text=T(u, "📘 Darsliklar (4)"), callback_data="books"), B(text=T(u, "⚖️ Qonunchilik hujjatlari (35)"), callback_data="laws:0")],
         [B(text=T(u, "📊 O‘zlashtirish statistikasi"), callback_data="stat"), B(text=T(u, "🔁 Bilmaganlarim"), callback_data="redo")],
         [B(text=T(u, "🔓 To‘liq kirish"), callback_data="buy"), B(text=("Lotin" if u["cyr"] else "Кирилл"), callback_data="script")]])
@@ -210,8 +215,10 @@ def fmt_price(): return f"{int(kv('price')):,}".replace(",", " ")
 r = Router()
 
 @r.message(CommandStart())
-async def cmd_start(m: Message):
+async def cmd_start(m: Message, command: CommandObject, bot: Bot):
     u = user(m.from_user.id, m.from_user.full_name)
+    if (command.args or "") == "buy" and not u["paid"]:
+        return await offer_buy(m, u, bot)
     await m.answer(T(u, WELCOME.format(n=len(Q), price=fmt_price())), reply_markup=main_kb(u))
 
 @r.callback_query(F.data == "home")
@@ -469,10 +476,54 @@ async def adm_bc(m: Message, command: CommandObject, bot: Bot):
         except Exception: pass
     await m.answer(f"✓ Yuborildi: {ok}")
 
+# ---------------- Mini App (Telegram ichidagi platforma) ----------------
+PB = json.loads((BASE / "data" / "platform_bank.json").read_text(encoding="utf-8"))
+APP_TPL = (BASE / "web" / "app.html").read_text(encoding="utf-8")
+LOADER = (BASE / "web" / "loader.html").read_text(encoding="utf-8")
+_APP_CACHE = {}
+def app_html(level):
+    if level not in _APP_CACHE:
+        qs = [q for q in PB["questions"] if q["id"] not in Q or need_level(q["id"]) <= level]
+        sent_l = {}
+        for s_ in PB["sentences"]: sent_l[s_["id"]] = s_["l"]
+        used_l = {sent_l.get(q["src"][0]) for q in qs}
+        sents = [s_ for s_ in PB["sentences"] if s_["l"] in used_l]
+        b = dict(PB, questions=qs, sentences=sents)
+        js = json.dumps(b, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
+        _APP_CACHE[level] = (APP_TPL.replace("__BANK__", js), len(PB["questions"]) - len(qs))
+    return _APP_CACHE[level]
+def check_init_data(init_data: str):
+    try:
+        data = dict(parse_qsl(init_data, keep_blank_values=True)); h = data.pop("hash", "")
+        dcs = "\n".join(f"{k}={v}" for k, v in sorted(data.items()))
+        secret = hmac.new(b"WebAppData", TOKEN.encode(), hashlib.sha256).digest()
+        if not hmac.compare_digest(hmac.new(secret, dcs.encode(), hashlib.sha256).hexdigest(), h): return None
+        if time.time() - int(data.get("auth_date", "0")) > 86400 * 2: return None
+        return json.loads(data.get("user", "{}"))
+    except Exception: return None
+def make_web(bot):
+    async def index(req): return web.Response(text=LOADER, content_type="text/html")
+    async def app(req):
+        tu = check_init_data(await req.text())
+        if not tu or "id" not in tu: return web.Response(status=403, text="Telegram orqali oching")
+        u = user(int(tu["id"]), (tu.get("first_name", "") + " " + tu.get("last_name", "")).strip())
+        lv = await level_of(bot, u); html_, locked = app_html(lv)
+        mini = json.dumps({"level": lv, "locked": locked, "price": fmt_price(), "channel_url": CHANNEL_URL, "bot_url": "https://t.me/huquqsavoljavob_bot"}, ensure_ascii=False)
+        return web.Response(text=html_.replace("__MINI__", mini, 1), content_type="text/html")
+    a = web.Application(client_max_size=1 << 20)
+    a.router.add_get("/", index); a.router.add_post("/app", app)
+    return a
+
 async def main():
     bot = Bot(TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher(); dp.include_router(r)
     await bot.delete_webhook(drop_pending_updates=True)
+    runner = web.AppRunner(make_web(bot)); await runner.setup()
+    await web.TCPSite(runner, "0.0.0.0", int(os.getenv("PORT", "8080"))).start()
+    if WEBAPP_URL:
+        try: await bot.set_chat_menu_button(menu_button=MenuButtonWebApp(text="📚 Ilova", web_app=WebAppInfo(url=WEBAPP_URL + "/")))
+        except Exception as e: logging.warning("menu button: %s", e)
+    for lv in (0, 1, 2): app_html(lv)   # oldindan tayyorlab qo'yish
     await dp.start_polling(bot)
 
 if __name__ == "__main__":

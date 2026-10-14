@@ -148,6 +148,7 @@ details.chap[open] .chev{transform:rotate(180deg)}
 .book-n{font-size:12px;color:var(--accent);font-weight:600;margin-top:4px}
 .passage{background:var(--sunk);border-radius:10px;padding:12px 14px}
 .passage .lp{margin:0 0 6px}
+.minilock{background:var(--accent-soft);border-radius:12px;padding:12px 14px;margin:0 0 12px;font-size:14px}
 .selbar{gap:8px;margin:8px 0 0}.selbar .btn{flex:1;padding:8px 10px;font-size:13px}
 .chap summary .trow,.les .trow{cursor:pointer}
 .qimg{margin:12px 0 4px;padding:0}
@@ -290,6 +291,9 @@ h3{font-size:15px;margin:0 0 6px}
    Server POST {prompt, json} qabul qilib, {text} qaytaradi (namuna: server.py). */
 const AI_URL = window.HUQUQ_AI_URL || "";
 const BANK = JSON.parse(document.getElementById("bank").textContent);
+const MINI = window.MINIAPP_INFO || null;   // Telegram Mini App: kirish darajasi va yopiq savollar
+const TGW = window.Telegram && window.Telegram.WebApp;
+try{ if(TGW){ TGW.ready(); TGW.expand(); } }catch(e){}
 const SENT = Object.fromEntries(BANK.sentences.map(s=>[s.id,s]));
 const SIDX = Object.fromEntries(BANK.sentences.map((s,i)=>[s.id,i]));
 const LESSONS = BANK.chapters.flatMap(c=>c.lessons);
@@ -510,6 +514,8 @@ function viewSetup(){
   </section>
   <section class="panel srcs">
     <h2 class="sech">${TE("Savol-javoblar")}</h2>
+    ${MINI&&MINI.level<2?`<div class="minilock"><div>${TE(MINI.level===0?"🆓 Demo: har bir darslikning 1-bobi va har bir hujjatning dastlabki 10 ta savoli ochiq.":"📢 Kanal a’zosi: 1–2-boblar va hujjatlarning dastlabki 20 ta savoli ochiq.")}<br><b>${TE("Yopiq: "+MINI.locked.toLocaleString("ru-RU")+" ta savol")}</b></div>
+      <div class="row" style="gap:8px;margin-top:8px">${MINI.level===0?`<button class="btn" data-mini="join">${TE("📢 Kanalga a’zo bo‘lish")}</button>`:""}<button class="btn primary" data-mini="buy">${TE("🔓 To‘liq kirish — "+MINI.price+" so‘m")}</button></div></div>`:""}
     <div class="lbl">${TE("1. Manbalar")}</div>
     <label class="trow allrow">${cbHTML(all,'id="allBook"')}<span class="tt">${TE("Barcha manbalardan savol-javob")}</span>${cntHTML(all)}</label>
     <div class="row selbar"><button class="btn" id="selAll">${TE("✓ Hammasini belgilash")}</button><button class="btn" id="selNone">${TE("✕ Barcha belgilarni tozalash")}</button></div>
@@ -914,6 +920,8 @@ function bind(){
   on("[data-chap]",e=>{const c=BANK.chapters.find(x=>x.id===e.target.dataset.chap); OPENCH.add(c.id); setKeys(c.lessons.flatMap(keysOfL),e.target.checked);},"change");
   on("[data-sec]",e=>setKeys([e.target.dataset.sec],e.target.checked),"change");
   on("#allBook",e=>setKeys(ALLSECS,e.target.checked),"change");
+  on("[data-mini]",e=>{ const k=e.currentTarget.dataset.mini, url=k==="join"?MINI.channel_url:MINI.bot_url+"?start=buy";
+    try{ if(TGW){ TGW.openTelegramLink(url); if(k==="buy") TGW.close(); } else window.open(url,"_blank"); }catch(_){ window.open(url,"_blank"); } });
   on("#selAll",()=>setCfg("secs",ALLSECS.slice()));
   on("#selNone",()=>setCfg("secs",[]));
   on("[data-clrsrc]",e=>{const S0=SOURCES.find(x=>x.id===e.currentTarget.dataset.clrsrc); const ks=new Set(srcKeys(S0)); setCfg("secs",CFG.secs.filter(k=>!ks.has(k)));});
