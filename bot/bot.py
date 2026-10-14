@@ -59,17 +59,25 @@ create table if not exists users(id integer primary key, name text, paid integer
 create table if not exists prog(uid integer, qid text, g text, n integer default 0, t integer, primary key(uid,qid));
 create table if not exists kv(k text primary key, v text);
 create table if not exists pays(id integer primary key autoincrement, uid integer, amount integer, kind text, t integer, info text);
+create table if not exists receipts(id integer primary key autoincrement, uid integer, file_id text, ftype text, kind text, amount integer, status text default 'pending', t integer, dt integer, admin integer, note text);
 """)
+for _col in ("last integer",):
+    try: db.execute("alter table users add column " + _col)
+    except Exception: pass
 def kv(k, d=None):
     r = db.execute("select v from kv where k=?", (k,)).fetchone(); return r[0] if r else d
 def set_kv(k, v): db.execute("insert or replace into kv values(?,?)", (k, str(v))); db.commit()
 if kv("price") is None: set_kv("price", 500000)
+if kv("auto_open") is None: set_kv("auto_open", 0)
 if kv("paytext") is None: set_kv("paytext", "To‘lov uchun admin bilan bog‘laning. To‘lov chekini (skrinshot) shu botga yuboring — admin tasdiqlagach to‘liq kirish ochiladi.")
 def user(uid, name=""):
     r = db.execute("select id,name,paid,cyr from users where id=?", (uid,)).fetchone()
+    now = int(time.time())
     if not r:
-        db.execute("insert into users(id,name,created) values(?,?,?)", (uid, name, int(time.time()))); db.commit()
+        db.execute("insert into users(id,name,created,last) values(?,?,?,?)", (uid, name, now, now)); db.commit()
         r = (uid, name, 0, 0)
+    else:
+        db.execute("update users set last=?" + (", name=?" if name else "") + " where id=?", ((now, name, uid) if name else (now, uid))); db.commit()
     return {"id": r[0], "name": r[1], "paid": r[2], "cyr": r[3]}
 
 # ---------------- Lotin → Kirill ----------------
@@ -201,6 +209,7 @@ async def show_card(bot, chat_id, u, msg: Message | None = None):
 WEBAPP_URL = os.getenv("WEBAPP_URL", "").rstrip("/")
 def main_kb(u):
     top = [[B(text=T(u, "📱 Ilovani ochish (savol-javob platformasi)"), web_app=WebAppInfo(url=WEBAPP_URL + "/"))]] if WEBAPP_URL else []
+    if WEBAPP_URL and u["id"] in ADMINS: top.append([B(text="🛠 Admin panel", web_app=WebAppInfo(url=WEBAPP_URL + "/admin"))])
     return InlineKeyboardMarkup(inline_keyboard=top + [
         [B(text=T(u, "📘 Darsliklar (4)"), callback_data="books"), B(text=T(u, "⚖️ Qonunchilik hujjatlari (35)"), callback_data="laws:0")],
         [B(text=T(u, "📊 O‘zlashtirish statistikasi"), callback_data="stat"), B(text=T(u, "🔁 Bilmaganlarim"), callback_data="redo")],
@@ -401,25 +410,32 @@ async def cb_buy(c: CallbackQuery, bot: Bot):
 async def pre_checkout(p: PreCheckoutQuery): await p.answer(ok=True)
 @r.message(F.successful_payment)
 async def paid(m: Message, bot: Bot):
-    sp = m.successful_payment
-    db.execute("update users set paid=1 where id=?", (m.from_user.id,))
-    db.execute("insert into pays(uid,amount,kind,t,info) values(?,?,?,?,?)", (m.from_user.id, sp.total_amount // 100, "invoice", int(time.time()), sp.provider_payment_charge_id)); db.commit()
-    u = user(m.from_user.id); await m.answer(T(u, "✅ To‘lov qabul qilindi. Barcha savol-javoblar ochildi!"), reply_markup=main_kb(u))
-    for a in ADMINS:
-        try: await bot.send_message(a, f"💰 To‘lov: {m.from_user.full_name} (<code>{m.from_user.id}</code>) — {sp.total_amount//100} so‘m")
-        except Exception: pass
+    sp = m.successful_payment; amt = sp.total_amount // 100; now = int(time.time())
+    auto = kv("auto_open") == "1"
+    db.execute("insert into receipts(uid,file_id,ftype,kind,amount,status,t,dt,note) values(?,?,?,?,?,?,?,?,?)",
+               (m.from_user.id, "", "", "invoice", amt, "ok" if auto else "pending", now, now if auto else None, sp.provider_payment_charge_id))
+    if auto:
+        db.execute("update users set paid=1 where id=?", (m.from_user.id,))
+        db.execute("insert into pays(uid,amount,kind,t,info) values(?,?,?,?,?)", (m.from_user.id, amt, "invoice", now, sp.provider_payment_charge_id))
+    db.commit()
+    u = user(m.from_user.id)
+    await m.answer(T(u, "✅ To‘lov qabul qilindi. Barcha savol-javoblar ochildi!" if auto else "✅ To‘lov qabul qilindi. Admin tasdiqlagach to‘liq kirish ochiladi va sizga xabar keladi."), reply_markup=main_kb(u))
+    await notify_admins(bot, f"💰 To‘lov: {html.escape(m.from_user.full_name)} (<code>{m.from_user.id}</code>) — {amt} so‘m" + ("" if auto else "\nTasdiqlash: admin paneldagi “Cheklar” bo‘limi."))
 # Qo'lda to'lov: foydalanuvchi chek (rasm) yuboradi → admin tasdiqlaydi
 @r.message(F.photo | F.document)
 async def receipt(m: Message, bot: Bot):
     if m.from_user.id in ADMINS: return
     u = user(m.from_user.id, m.from_user.full_name)
+    fid, ft = (m.photo[-1].file_id, "photo") if m.photo else (m.document.file_id, m.document.mime_type or "doc")
+    cur = db.execute("insert into receipts(uid,file_id,ftype,kind,amount,status,t) values(?,?,?,?,?,?,?)", (u["id"], fid, ft, "chek", int(kv("price")), "pending", int(time.time())))
+    db.commit(); rid = cur.lastrowid
     for a in ADMINS:
         try:
             await m.forward(a)
-            await bot.send_message(a, f"🧾 Chek: {html.escape(m.from_user.full_name)} (<code>{m.from_user.id}</code>)",
-                                   reply_markup=InlineKeyboardMarkup(inline_keyboard=[[B(text="✅ Ochish", callback_data=f"adm_ok:{m.from_user.id}"), B(text="❌ Rad etish", callback_data=f"adm_no:{m.from_user.id}")]]))
+            await bot.send_message(a, f"🧾 Chek #{rid}: {html.escape(m.from_user.full_name)} (<code>{m.from_user.id}</code>)",
+                                   reply_markup=InlineKeyboardMarkup(inline_keyboard=[[B(text="✅ Tasdiqlash", callback_data=f"adm_ok:{rid}"), B(text="❌ Rad etish", callback_data=f"adm_no:{rid}")]]))
         except Exception: pass
-    await m.answer(T(u, "Chek adminga yuborildi. Tasdiqlangach xabar beramiz."))
+    await m.answer(T(u, "Chek adminga yuborildi. Admin tasdiqlagach to‘liq kirish ochiladi va sizga xabar keladi."))
 
 # ---------------- Admin ----------------
 def is_admin(uid): return uid in ADMINS
@@ -427,7 +443,8 @@ def is_admin(uid): return uid in ADMINS
 async def adm(m: Message):
     if not is_admin(m.from_user.id): return
     nu = db.execute("select count(*), sum(paid) from users").fetchone()
-    await m.answer(f"<b>Admin</b>\nFoydalanuvchilar: {nu[0]}, to‘lov qilganlar: {nu[1] or 0}\nNarx: {fmt_price()} so‘m\n\n"
+    kb = InlineKeyboardMarkup(inline_keyboard=[[B(text="🛠 Admin panelni ochish", web_app=WebAppInfo(url=WEBAPP_URL + "/admin"))]]) if WEBAPP_URL else None
+    await m.answer(reply_markup=kb, text=f"<b>Admin</b>\nFoydalanuvchilar: {nu[0]}, to‘lov qilganlar: {nu[1] or 0}\nNarx: {fmt_price()} so‘m\n\n"
                    "/narx 500000 — narxni o‘zgartirish\n/ochish ID — to‘liq kirishni ochish\n/yopish ID — yopish\n"
                    "/tolov_matni matn — qo‘lda to‘lov yo‘riqnomasi (karta raqami va h.k.)\n/xabar matn — barcha foydalanuvchilarga xabar")
 @r.message(Command("narx"))
@@ -441,9 +458,14 @@ async def adm_paytext(m: Message, command: CommandObject):
     if not is_admin(m.from_user.id): return
     if not command.args: return await m.answer("Joriy matn:\n" + kv("paytext"))
     set_kv("paytext", command.args); await m.answer("✓ Saqlandi")
-async def set_paid(bot, uid, v, admin):
+async def notify_admins(bot, text):
+    kb = InlineKeyboardMarkup(inline_keyboard=[[B(text="🛠 Admin panel", web_app=WebAppInfo(url=WEBAPP_URL + "/admin"))]]) if WEBAPP_URL else None
+    for a in ADMINS:
+        try: await bot.send_message(a, text, reply_markup=kb)
+        except Exception: pass
+async def set_paid(bot, uid, v, admin, amount=None, kind="manual"):
     user(uid); db.execute("update users set paid=? where id=?", (v, uid))
-    if v: db.execute("insert into pays(uid,amount,kind,t,info) values(?,?,?,?,?)", (uid, int(kv("price")), "manual", int(time.time()), f"admin {admin}"))
+    if v and amount: db.execute("insert into pays(uid,amount,kind,t,info) values(?,?,?,?,?)", (uid, int(amount), kind, int(time.time()), f"admin {admin}"))
     db.commit()
     try: await bot.send_message(uid, "✅ To‘liq kirish ochildi! /start" if v else "To‘liq kirish yopildi.")
     except Exception: pass
@@ -451,7 +473,7 @@ async def set_paid(bot, uid, v, admin):
 async def adm_open(m: Message, command: CommandObject, bot: Bot):
     if not is_admin(m.from_user.id): return
     if not (command.args or "").strip().isdigit(): return await m.answer("Masalan: /ochish 123456789")
-    await set_paid(bot, int(command.args), 1, m.from_user.id); await m.answer("✓ Ochildi")
+    await set_paid(bot, int(command.args), 1, m.from_user.id); await m.answer("✓ Ochildi (to‘lov summasi yozilmadi — kerak bo‘lsa admin panelda chekni tasdiqlang)")
 @r.message(Command("yopish"))
 async def adm_close(m: Message, command: CommandObject, bot: Bot):
     if not is_admin(m.from_user.id): return
@@ -460,13 +482,21 @@ async def adm_close(m: Message, command: CommandObject, bot: Bot):
 @r.callback_query(F.data.startswith("adm_"))
 async def adm_cb(c: CallbackQuery, bot: Bot):
     if not is_admin(c.from_user.id): return await c.answer()
-    act, uid = c.data[4:].split(":"); uid = int(uid)
-    if act == "ok": await set_paid(bot, uid, 1, c.from_user.id); await c.message.edit_text(c.message.html_text + "\n✅ Ochildi")
+    act, rid = c.data[4:].split(":"); res = await receipt_act(bot, int(rid), act, c.from_user.id)
+    try: await c.message.edit_text(c.message.html_text + ("\n✅ Tasdiqlandi" if act == "ok" else "\n❌ Rad etildi") + (f" ({res})" if res else ""))
+    except Exception: pass
+    await c.answer(res or "✓")
+async def receipt_act(bot, rid, act, admin, amount=None, note=""):
+    r_ = db.execute("select uid,amount,status,kind from receipts where id=?", (rid,)).fetchone()
+    if not r_: return "chek topilmadi"
+    if r_[2] != "pending": return "allaqachon ko‘rib chiqilgan"
+    uid, amt = r_[0], int(amount or r_[1] or 0)
+    db.execute("update receipts set status=?, dt=?, admin=?, amount=?, note=? where id=?", ("ok" if act == "ok" else "no", int(time.time()), admin, amt, note, rid)); db.commit()
+    if act == "ok": await set_paid(bot, uid, 1, admin, amt, r_[3])
     else:
-        try: await bot.send_message(uid, "To‘lov tasdiqlanmadi. Savollar bo‘lsa admin bilan bog‘laning.")
+        try: await bot.send_message(uid, "To‘lov tasdiqlanmadi." + (f" Sabab: {html.escape(note)}" if note else "") + " Savollar bo‘lsa admin bilan bog‘laning.")
         except Exception: pass
-        await c.message.edit_text(c.message.html_text + "\n❌ Rad etildi")
-    await c.answer()
+    return ""
 @r.message(Command("xabar"))
 async def adm_bc(m: Message, command: CommandObject, bot: Bot):
     if not is_admin(m.from_user.id) or not command.args: return
@@ -480,6 +510,7 @@ async def adm_bc(m: Message, command: CommandObject, bot: Bot):
 PB = json.loads((BASE / "data" / "platform_bank.json").read_text(encoding="utf-8"))
 APP_TPL = (BASE / "web" / "app.html").read_text(encoding="utf-8")
 LOADER = (BASE / "web" / "loader.html").read_text(encoding="utf-8")
+ADMIN_HTML = (BASE / "web" / "admin.html").read_text(encoding="utf-8")
 _APP_CACHE = {}
 def app_html(level):
     if level not in _APP_CACHE:
@@ -510,8 +541,92 @@ def make_web(bot):
         lv = await level_of(bot, u); html_, locked = app_html(lv)
         mini = json.dumps({"level": lv, "locked": locked, "price": fmt_price(), "channel_url": CHANNEL_URL, "bot_url": "https://t.me/huquqsavoljavob_bot"}, ensure_ascii=False)
         return web.Response(text=html_.replace("__MINI__", mini, 1), content_type="text/html")
+    # ---- Admin panel ----
+    async def admin_page(req): return web.Response(text=ADMIN_HTML, content_type="text/html")
+    PANEL_PW = os.getenv("ADMIN_PANEL_PASSWORD", "")
+    def panel_key(): return hmac.new(TOKEN.encode(), ("panel:" + PANEL_PW).encode(), hashlib.sha256).hexdigest()
+    async def login(req):
+        try: body = await req.json()
+        except Exception: body = {}
+        await asyncio.sleep(1)
+        if PANEL_PW and hmac.compare_digest(str(body.get("pw", "")), PANEL_PW):
+            return web.json_response({"key": panel_key()})
+        return web.json_response({"error": "Parol noto‘g‘ri"}, status=403)
+    def adm_user(init):
+        if PANEL_PW and init and hmac.compare_digest(str(init), panel_key()): return next(iter(ADMINS), 0) or -1
+        tu = check_init_data(init or "")
+        return int(tu["id"]) if tu and tu.get("id") and int(tu["id"]) in ADMINS else None
+    async def api(req):
+        try: body = await req.json()
+        except Exception: body = {}
+        aid = adm_user(body.get("init"))
+        if not aid: return web.json_response({"error": "ruxsat yo‘q"}, status=403)
+        act = req.match_info["act"]; now = int(time.time()); day = now - now % 86400 - 5 * 3600
+        if day + 86400 <= now: day += 86400
+        import datetime as _dt
+        t0 = _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=5)))
+        month = int(t0.replace(day=1, hour=0, minute=0, second=0, microsecond=0).timestamp())
+        today = int(t0.replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
+        q1 = lambda sql, *a: db.execute(sql, a).fetchone()[0] or 0
+        if act == "summary":
+            return web.json_response(dict(
+                users=q1("select count(*) from users"), new_today=q1("select count(*) from users where created>=?", today),
+                new_week=q1("select count(*) from users where created>=?", now - 7 * 86400), active_week=q1("select count(*) from users where last>=?", now - 7 * 86400),
+                paid=q1("select count(*) from users where paid=1"), revenue=q1("select sum(amount) from pays"),
+                revenue_month=q1("select sum(amount) from pays where t>=?", month), revenue_today=q1("select sum(amount) from pays where t>=?", today),
+                pays=q1("select count(*) from pays"), pending=q1("select count(*) from receipts where status='pending'"),
+                answers=q1("select sum(n) from prog"), price=int(kv("price")), paytext=kv("paytext"), auto_open=kv("auto_open") == "1",
+                questions=len(Q),
+                daily=[[r_[0], r_[1]] for r_ in db.execute("select date(t,'unixepoch','+5 hours') d, sum(amount) from pays where t>=? group by d order by d", (now - 30 * 86400,))],
+                signups=[[r_[0], r_[1]] for r_ in db.execute("select date(created,'unixepoch','+5 hours') d, count(*) from users where created>=? group by d order by d", (now - 30 * 86400,))]))
+        if act == "receipts":
+            st = body.get("status", "pending")
+            rows = db.execute("select r.id,r.uid,u.name,r.kind,r.ftype,r.amount,r.status,r.t,r.dt,r.note from receipts r left join users u on u.id=r.uid where (?='all' or r.status=?) order by r.id desc limit 200", (st, st)).fetchall()
+            return web.json_response([dict(zip(["id", "uid", "name", "kind", "ftype", "amount", "status", "t", "dt", "note"], r_)) for r_ in rows])
+        if act == "receipt_act":
+            res = await receipt_act(bot, int(body["id"]), body["act"], aid, body.get("amount"), body.get("note", ""))
+            return web.json_response({"ok": not res, "msg": res})
+        if act == "users":
+            qq = (body.get("q") or "").strip(); off = int(body.get("offset", 0)); flt = body.get("filter", "all")
+            where, args = ["1=1"], []
+            if qq: where.append("(cast(id as text) like ? or name like ?)"); args += [f"%{qq}%", f"%{qq}%"]
+            if flt == "paid": where.append("paid=1")
+            if flt == "free": where.append("paid=0")
+            w = " and ".join(where)
+            rows = db.execute(f"select id,name,paid,created,last,(select sum(n) from prog where uid=users.id) from users where {w} order by created desc limit 50 offset ?", (*args, off)).fetchall()
+            tot = db.execute(f"select count(*) from users where {w}", args).fetchone()[0]
+            return web.json_response({"total": tot, "rows": [dict(zip(["id", "name", "paid", "created", "last", "answers"], r_)) for r_ in rows]})
+        if act == "user_set":
+            await set_paid(bot, int(body["id"]), 1 if body.get("paid") else 0, aid, body.get("amount") or None)
+            return web.json_response({"ok": True})
+        if act == "pays":
+            rows = db.execute("select p.id,p.uid,u.name,p.amount,p.kind,p.t,p.info from pays p left join users u on u.id=p.uid order by p.id desc limit 300").fetchall()
+            return web.json_response([dict(zip(["id", "uid", "name", "amount", "kind", "t", "info"], r_)) for r_ in rows])
+        if act == "settings":
+            if body.get("price"): set_kv("price", int(re.sub(r"\D", "", str(body["price"])) or kv("price")))
+            if body.get("paytext") is not None: set_kv("paytext", body["paytext"])
+            if body.get("auto_open") is not None: set_kv("auto_open", 1 if body["auto_open"] else 0)
+            return web.json_response({"ok": True})
+        if act == "broadcast":
+            txt = (body.get("text") or "").strip()
+            if not txt: return web.json_response({"ok": False})
+            async def _bc():
+                for (uid,) in db.execute("select id from users").fetchall():
+                    try: await bot.send_message(uid, txt); await asyncio.sleep(0.05)
+                    except Exception: pass
+            asyncio.create_task(_bc())
+            return web.json_response({"ok": True, "n": q1("select count(*) from users")})
+        return web.json_response({"error": "noma’lum"}, status=404)
+    async def file_(req):
+        if not adm_user(req.query.get("init")): return web.Response(status=403)
+        r_ = db.execute("select file_id,ftype from receipts where id=?", (int(req.match_info["rid"]),)).fetchone()
+        if not r_ or not r_[0]: return web.Response(status=404)
+        f = await bot.get_file(r_[0]); buf = await bot.download_file(f.file_path)
+        ct = "image/jpeg" if r_[1] == "photo" else (r_[1] if "/" in (r_[1] or "") else "application/octet-stream")
+        return web.Response(body=buf.read(), content_type=ct)
     a = web.Application(client_max_size=1 << 20)
     a.router.add_get("/", index); a.router.add_post("/app", app)
+    a.router.add_get("/admin", admin_page); a.router.add_post("/admin/login", login); a.router.add_post("/admin/api/{act}", api); a.router.add_get("/admin/file/{rid}", file_)
     return a
 
 async def main():

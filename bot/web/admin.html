@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="uz"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Admin panel</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--bg:#f3f4f2;--card:#fff;--fg:#17211e;--mut:#66726d;--line:#dde3df;--acc:#0f6e5c;--acc2:#e3f1ec;--ok:#1f7a3d;--no:#c23a2b;--warn:#b7791f}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111614;--card:#1a211e;--fg:#e8eeeb;--mut:#9aa8a2;--line:#2b3531;--acc:#3fb89a;--acc2:#1d302a;--ok:#4cc27a;--no:#ff7b6b;--warn:#e7b04a}}
+:root[data-theme="dark"]{--bg:#111614;--card:#1a211e;--fg:#e8eeeb;--mut:#9aa8a2;--line:#2b3531;--acc:#3fb89a;--acc2:#1d302a;--ok:#4cc27a;--no:#ff7b6b;--warn:#e7b04a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:14px 16px 0}
+h1{font-size:19px;margin:0 0 10px}
+nav{display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;border-bottom:1px solid var(--line)}
+nav button{flex:none;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:999px;padding:7px 13px;font:600 13px inherit;cursor:pointer}
+nav button[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:#fff}
+.badge{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--no);color:#fff;font-size:11px;margin-left:4px}
+main{padding:14px 16px 40px;max-width:900px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.tile b{display:block;font-size:22px;font-variant-numeric:tabular-nums}.tile span{color:var(--mut);font-size:12.5px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:12px}
+.card h3{margin:0 0 8px;font-size:15px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:10px;padding:8px 12px;font:600 13.5px inherit;cursor:pointer}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}.btn.no{background:var(--no);border-color:var(--no);color:#fff}.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+input,textarea,select{width:100%;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:10px;padding:9px 11px;font:inherit}
+textarea{min-height:90px}
+.list .it{border-top:1px solid var(--line);padding:10px 0}.list .it:first-child{border-top:0}
+.mut{color:var(--mut);font-size:12.5px}
+.pill{display:inline-block;border-radius:999px;padding:1px 8px;font-size:12px;font-weight:600}
+.pill.ok{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}.pill.no{background:color-mix(in srgb,var(--no) 15%,transparent);color:var(--no)}.pill.pending{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.rc img{max-width:100%;max-height:420px;border-radius:10px;border:1px solid var(--line);display:block;margin:8px 0}
+.bars{display:flex;align-items:flex-end;gap:3px;height:90px;margin-top:6px}.bars i{flex:1;background:var(--acc);border-radius:3px 3px 0 0;min-height:2px}
+.empty{color:var(--mut);padding:16px 0;text-align:center}
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:9px 14px;border-radius:10px;font-size:14px;opacity:0;transition:.2s;pointer-events:none}.toast.on{opacity:1}
+</style></head>
+<body>
+<header><h1>🛠 Admin panel · @huquqsavoljavob_bot</h1>
+<nav id="nav"><button data-tab="sum" aria-pressed="true">Umumiy</button><button data-tab="rec">Cheklar<span id="pb"></span></button><button data-tab="usr">Foydalanuvchilar</button><button data-tab="pay">To‘lovlar</button><button data-tab="set">Sozlamalar</button><button data-tab="bc">Xabar yuborish</button></nav></header>
+<main id="v"><div class="empty">Yuklanmoqda…</div></main>
+<div class="toast" id="toast"></div>
+<script>
+const W=window.Telegram&&Telegram.WebApp; try{W.ready();W.expand();}catch(e){}
+let INIT=(W&&W.initData)||""; try{ if(!INIT) INIT=sessionStorage.getItem("pk")||""; }catch(e){} let TAB="sum", RST="pending", UQ="", UF="all", UOFF=0;
+const $=s=>document.querySelector(s), esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt=n=>(+n||0).toLocaleString("ru-RU"), dt=t=>t?new Date(t*1000).toLocaleString("ru-RU",{timeZone:"Asia/Tashkent",day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}):"—";
+const toast=m=>{const t=$("#toast");t.textContent=m;t.classList.add("on");setTimeout(()=>t.classList.remove("on"),1800)};
+async function api(act,body={}){const r=await fetch("admin/api/"+act,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({init:INIT,...body})});
+  if(r.status===403) throw "Ruxsat yo‘q: panel faqat admin uchun, Telegram ichidan oching."; return r.json();}
+const ST={pending:["pending","Kutilmoqda"],ok:["ok","Tasdiqlangan"],no:["no","Rad etilgan"]};
+async function render(){
+  document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.tab===TAB)));
+  const v=$("#v");
+  try{
+    const S=await api("summary"); $("#pb").innerHTML=S.pending?`<span class="badge">${S.pending}</span>`:"";
+    if(TAB==="sum"){
+      const bars=(arr)=>{const m=Math.max(1,...arr.map(x=>x[1]));return `<div class="bars">${arr.map(x=>`<i title="${x[0]}: ${fmt(x[1])}" style="height:${x[1]/m*100}%"></i>`).join("")||'<span class="mut">Hali maʼlumot yo‘q</span>'}</div>`};
+      v.innerHTML=`<div class="grid">
+        <div class="tile"><b>${fmt(S.users)}</b><span>foydalanuvchi (bugun +${S.new_today}, 7 kunda +${S.new_week})</span></div>
+        <div class="tile"><b>${fmt(S.active_week)}</b><span>7 kunda faol</span></div>
+        <div class="tile"><b>${fmt(S.paid)}</b><span>to‘liq kirish ochilgan</span></div>
+        <div class="tile"><b>${S.pending}</b><span>tasdiq kutayotgan chek</span></div>
+        <div class="tile"><b>${fmt(S.revenue)}</b><span>jami tushum, so‘m (${S.pays} ta to‘lov)</span></div>
+        <div class="tile"><b>${fmt(S.revenue_month)}</b><span>shu oy, so‘m</span></div>
+        <div class="tile"><b>${fmt(S.revenue_today)}</b><span>bugun, so‘m</span></div>
+        <div class="tile"><b>${fmt(S.answers)}</b><span>javob berilgan kartochka</span></div></div>
+        <div class="card"><h3>Kunlik tushum (30 kun)</h3>${bars(S.daily)}</div>
+        <div class="card"><h3>Yangi foydalanuvchilar (30 kun)</h3>${bars(S.signups)}</div>
+        <div class="card"><h3>Joriy sozlamalar</h3><div>Narx: <b>${fmt(S.price)} so‘m</b> · Savollar: ${fmt(S.questions)} ta · To‘lovdan keyin: <b>${S.auto_open?"avtomatik ochiladi":"faqat admin tasdig‘i bilan"}</b></div></div>`;
+    }
+    if(TAB==="rec"){
+      const R=await api("receipts",{status:RST});
+      v.innerHTML=`<div class="row" style="margin-bottom:6px">${["pending","ok","no","all"].map(s=>`<button class="btn ${RST===s?"pri":""}" data-rst="${s}">${s==="all"?"Hammasi":ST[s][1]}</button>`).join("")}</div>
+      <div class="card list rc">${R.length?R.map(r=>`<div class="it"><div class="row" style="justify-content:space-between"><b>#${r.id} · ${esc(r.name||"—")}</b><span class="pill ${ST[r.status][0]}">${ST[r.status][1]}</span></div>
+        <div class="mut">ID ${r.uid} · ${r.kind==="invoice"?"Bot ichida to‘lov":"Chek"} · ${dt(r.t)}${r.dt?" · ko‘rildi "+dt(r.dt):""}${r.note?" · "+esc(r.note):""}</div>
+        ${r.kind!=="invoice"&&r.ftype?(r.ftype==="photo"?`<img loading="lazy" src="admin/file/${r.id}?init=${encodeURIComponent(INIT)}" alt="Chek #${r.id}">`:`<a href="admin/file/${r.id}?init=${encodeURIComponent(INIT)}" target="_blank">📎 Faylni ochish</a>`):""}
+        ${r.status==="pending"?`<div class="row" style="margin-top:6px"><input type="number" id="am${r.id}" value="${r.amount||S.price}" style="max-width:160px" aria-label="Summa"><span class="mut">so‘m</span>
+          <button class="btn ok" data-ok="${r.id}">✅ Tasdiqlash va ochish</button></div>
+          <div class="row" style="margin-top:6px"><input id="nt${r.id}" placeholder="Rad etish sababi (ixtiyoriy)" style="flex:1;min-width:160px"><button class="btn no" data-no="${r.id}">❌ Rad etish</button></div>`:`<div class="mut">Summa: ${fmt(r.amount)} so‘m</div>`}</div>`).join(""):'<div class="empty">Chek yo‘q</div>'}</div>`;
+    }
+    if(TAB==="usr"){
+      const U=await api("users",{q:UQ,filter:UF,offset:UOFF});
+      v.innerHTML=`<div class="row"><input id="uq" placeholder="ID yoki ism bo‘yicha qidirish" value="${esc(UQ)}" style="flex:1;min-width:180px">
+        <select id="uf" style="width:auto">${[["all","Hammasi"],["paid","To‘liq kirishli"],["free","Demo/kanal"]].map(([k,l])=>`<option value="${k}" ${UF===k?"selected":""}>${l}</option>`).join("")}</select></div>
+      <div class="mut" style="margin:8px 0">Topildi: ${fmt(U.total)}</div>
+      <div class="card list">${U.rows.map(u=>`<div class="it row" style="justify-content:space-between"><div><b>${esc(u.name||"—")}</b> <span class="mut">ID ${u.id}</span><br>
+        <span class="mut">Ro‘yxatdan: ${dt(u.created)} · oxirgi: ${dt(u.last)} · javoblar: ${fmt(u.answers)}</span></div>
+        ${u.paid?`<span class="row"><span class="pill ok">To‘liq kirish</span><button class="btn" data-close="${u.id}">Yopish</button></span>`:`<button class="btn pri" data-open="${u.id}">🔓 To‘liq kirish berish</button>`}</div>`).join("")||'<div class="empty">Foydalanuvchi yo‘q</div>'}</div>
+      <div class="row" style="justify-content:center;margin-top:10px">${UOFF?'<button class="btn" data-pg="-1">← Oldingi</button>':""}${UOFF+50<U.total?'<button class="btn" data-pg="1">Keyingi →</button>':""}</div>`;
+    }
+    if(TAB==="pay"){
+      const P=await api("pays");
+      v.innerHTML=`<div class="tile" style="margin-bottom:10px"><b>${fmt(S.revenue)} so‘m</b><span>jami tushum · ${S.pays} ta to‘lov</span></div>
+      <div class="card list">${P.map(p=>`<div class="it row" style="justify-content:space-between"><div><b>${fmt(p.amount)} so‘m</b> · ${esc(p.name||"—")} <span class="mut">ID ${p.uid}</span><br><span class="mut">${dt(p.t)} · ${p.kind==="invoice"?"bot ichida to‘lov":p.kind==="chek"?"chek orqali":"qo‘lda"}</span></div></div>`).join("")||'<div class="empty">To‘lov yo‘q</div>'}</div>`;
+    }
+    if(TAB==="set"){
+      v.innerHTML=`<div class="card"><h3>To‘liq kirish narxi (so‘m)</h3><div class="row"><input id="price" type="number" value="${S.price}" style="max-width:220px"><button class="btn pri" id="sp">Saqlash</button></div></div>
+      <div class="card"><h3>To‘lovdan keyin kirish</h3><label class="row"><input type="checkbox" id="ao" style="width:auto" ${S.auto_open?"checked":""}> Bot ichidagi to‘lovdan keyin avtomatik ochilsin</label>
+        <div class="mut">Belgilanmagan bo‘lsa, to‘liq kirish faqat admin “Cheklar” bo‘limida tasdiqlagandan keyin ochiladi.</div></div>
+      <div class="card"><h3>Qo‘lda to‘lov yo‘riqnomasi</h3><div class="mut">Foydalanuvchiga “To‘liq kirish” bosilganda ko‘rsatiladi (karta raqami, egasi, chekni yuborish tartibi).</div>
+        <textarea id="pt">${esc(S.paytext)}</textarea><div class="row" style="margin-top:8px"><button class="btn pri" id="spt">Saqlash</button></div></div>`;
+    }
+    if(TAB==="bc"){
+      v.innerHTML=`<div class="card"><h3>Barcha foydalanuvchilarga xabar (${fmt(S.users)} ta)</h3><textarea id="bt" placeholder="Xabar matni"></textarea>
+        <div class="row" style="margin-top:8px"><button class="btn pri" id="bs">Yuborish</button></div></div>`;
+    }
+  }catch(e){ if(!(W&&W.initData)){ try{sessionStorage.removeItem("pk")}catch(_){ } INIT=""; return loginView(String(e)); } v.innerHTML=`<div class="empty">${esc(e)}</div>`; }
+}
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("button"); if(!b) return; const d=b.dataset;
+  try{
+    if(d.tab){TAB=d.tab;return render();}
+    if(d.rst){RST=d.rst;return render();}
+    if(d.ok||d.no){const id=+(d.ok||d.no); let note="";
+      if(d.no){ note=($("#nt"+id)||{}).value||""; }
+      const r=await api("receipt_act",{id,act:d.ok?"ok":"no",amount:d.ok?+$("#am"+id).value:null,note}); toast(r.ok?(d.ok?"Tasdiqlandi, kirish ochildi":"Rad etildi"):r.msg); return render();}
+    if(d.open||d.close){const id=+(d.open||d.close); let amount=null;
+
+      await api("user_set",{id,paid:!!d.open,amount}); toast(d.open?"To‘liq kirish berildi":"Yopildi"); return render();}
+    if(d.pg){UOFF=Math.max(0,UOFF+50*+d.pg);return render();}
+    if(b.id==="sp"){await api("settings",{price:$("#price").value});toast("Narx saqlandi");return render();}
+    if(b.id==="spt"){await api("settings",{paytext:$("#pt").value});toast("Saqlandi");return;}
+    if(b.id==="bs"){const t=$("#bt").value.trim(); if(!t) return; const ok=await new Promise(res=>{ if(W&&W.showConfirm) W.showConfirm("Barcha foydalanuvchilarga yuborilsinmi?",res); else res(true); }); if(!ok) return;
+      const r=await api("broadcast",{text:t}); toast("Yuborilmoqda: "+r.n+" ta"); $("#bt").value="";}
+  }catch(err){toast(String(err));}
+});
+document.addEventListener("change",async e=>{
+  if(e.target.id==="ao"){await api("settings",{auto_open:e.target.checked});toast("Saqlandi");}
+  if(e.target.id==="uf"){UF=e.target.value;UOFF=0;render();}
+});
+let qt; document.addEventListener("input",e=>{ if(e.target.id==="uq"){clearTimeout(qt);qt=setTimeout(()=>{UQ=e.target.value;UOFF=0;render().then(()=>{const i=$("#uq");i.focus();i.setSelectionRange(99,99);});},400);} });
+function loginView(msg){ $("#v").innerHTML=`<div class="card" style="max-width:380px;margin:30px auto"><h3>Admin panelga kirish</h3>
+  <div class="mut" style="margin-bottom:8px">Telegram'da: botga /admin yozib “Admin panelni ochish” tugmasini bosing. Brauzerda: admin parolini kiriting.</div>
+  <form id="lf" class="row"><input type="password" id="pw" placeholder="Parol" autocomplete="current-password" style="flex:1"><button class="btn pri">Kirish</button></form>
+  ${msg?`<div class="mut" style="color:var(--no);margin-top:6px">${esc(msg)}</div>`:""}</div>`; }
+document.addEventListener("submit",async e=>{ if(e.target.id!=="lf") return; e.preventDefault();
+  const r=await fetch("admin/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({pw:$("#pw").value})});
+  const j=await r.json(); if(j.key){ INIT=j.key; try{sessionStorage.setItem("pk",j.key)}catch(_){ } render(); } else loginView(j.error||"Xato"); });
+if(!INIT) loginView(); else render();
+</script></body></html>
