@@ -25,6 +25,7 @@ BASE = Path(__file__).parent
 TOKEN = os.environ["BOT_TOKEN"]
 CHANNEL = os.getenv("CHANNEL", "@huquqsavoljavob")            # kanal (bot kanalda admin bo'lishi shart)
 CHANNEL_URL = os.getenv("CHANNEL_URL", "https://t.me/huquqsavoljavob")
+BOT_USERNAME = os.getenv("BOT_USERNAME", "huquqsavoljavob_bot").lstrip("@")   # boshqa botga ko'chirilganda shu o'zgaruvchini yozing
 ADMINS = {int(x) for x in os.getenv("ADMIN_IDS", "").replace(" ", "").split(",") if x}
 PROVIDER_TOKEN = os.getenv("PAYMENT_PROVIDER_TOKEN", "")       # Payme/Click (BotFather → Payments). Bo'sh bo'lsa — qo'lda to'lov
 DEMO_N = 5                                                      # demo: har bir mavzu / hujjatdan ochiq savollar
@@ -298,7 +299,7 @@ async def send_welcome(bot, chat_id, u):
 
 # ---- Kirish darvozalari: telefon raqami → foydalanish shartlariga rozilik → ilova ----
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
-TERMS_TXT = (BASE / "web" / "oferta.txt").read_text(encoding="utf-8")
+TERMS_TXT = (BASE / "web" / "oferta.txt").read_text(encoding="utf-8").replace("@huquqsavoljavob_bot", "@" + BOT_USERNAME)
 TERMS_SHORT = ("📄 <b>Foydalanish shartlari va ommaviy oferta</b>\n\n"
                "Asosiy qoidalar:\n"
                "• savol-javoblar sun’iy intellekt yordamida darsliklar va qonunchilik hujjatlari asosida tuzilgan; sun’iy intellekt xato qilishi mumkin — muhim ma’lumotni rasmiy manbalardan (lex.uz) tekshiring;\n"
@@ -719,8 +720,8 @@ r.message.outer_middleware(maint_mw); r.callback_query.outer_middleware(maint_mw
 # ---------------- Mini App (Telegram ichidagi platforma) ----------------
 PB = json.loads((BASE / "data" / "platform_bank.json").read_text(encoding="utf-8"))
 APP_TPL = (BASE / "web" / "app.html").read_text(encoding="utf-8")
-LOADER = (BASE / "web" / "loader.html").read_text(encoding="utf-8")
-ADMIN_HTML = (BASE / "web" / "admin.html").read_text(encoding="utf-8")
+LOADER = (BASE / "web" / "loader.html").read_text(encoding="utf-8").replace("@huquqsavoljavob_bot", "@" + BOT_USERNAME)
+ADMIN_HTML = (BASE / "web" / "admin.html").read_text(encoding="utf-8").replace("@huquqsavoljavob_bot", "@" + BOT_USERNAME)
 # Demo: darsliklarning har bir mavzusidan (dars) va har bir qonunchilik hujjatidan DEMO_N tadan savol (matn tartibida)
 _SIDX = {s_["id"]: i for i, s_ in enumerate(PB["sentences"])}
 _SL = {s_["id"]: s_["l"] for s_ in PB["sentences"]}
@@ -789,7 +790,7 @@ def gate_page(kind, u=None):
         js = ("const W=Telegram.WebApp;W.ready();W.expand();async function poll(n){const f=new FormData();f.append('init',W.initData);"
               "const j=await(await fetch('api/state',{method:'POST',body:f})).json();if(j.phone){location.reload();return;}if(n>0)setTimeout(()=>poll(n-1),1000);}"
               "document.getElementById('b').onclick=()=>{try{W.requestContact(ok=>{if(ok)poll(15);else document.getElementById('e').textContent='"
-              + Tg("Raqam yuborilmadi. Qayta urinib ko‘ring.") + "';});}catch(e){W.openTelegramLink('https://t.me/huquqsavoljavob_bot?start=phone');}};")
+              + Tg("Raqam yuborilmadi. Qayta urinib ko‘ring.") + "';});}catch(e){W.openTelegramLink('https://t.me/" + BOT_USERNAME + "?start=phone');}};")
     else:
         body = (f"<div class='terms'>{terms_html(cy)}</div><label class='chk'><input type='checkbox' id='c'><span>{html.escape(Tg('Foydalanish shartlari va ommaviy oferta bilan tanishdim va ularga roziman.'))}</span></label>"
                 f"<button class='btn' id='b' disabled>{html.escape(Tg('✅ Shartlarga roziman — davom etish'))}</button>")
@@ -812,7 +813,7 @@ def make_web(bot):
         mini = json.dumps({"level": lv, "locked": locked, "until": (u["until"] if not u["paid"] and u["id"] not in ADMINS and (u.get("until") or 0) > time.time() else None),
                            "pending": pending, "member": mem is not False, "tariffs": pub_tariffs(), "paytext": kv("paytext"), "pay": pay_info(), "uid": u["id"],
                            "free_until": free_until() if free_active() else None, "cyr": bool(u.get("cyr")),
-                           "channel_url": CHANNEL_URL, "bot_url": "https://t.me/huquqsavoljavob_bot", "total": len(PB["questions"]), "demo_n": DEMO_N}, ensure_ascii=False)
+                           "channel_url": CHANNEL_URL, "bot_url": "https://t.me/" + BOT_USERNAME, "total": len(PB["questions"]), "demo_n": DEMO_N}, ensure_ascii=False)
         return web.Response(text=html_.replace("__MINI__", mini.replace("</", "<\\/"), 1), content_type="text/html")
     async def api_check(req):
         form = await req.post(); u = tg_user(form.get("init"))
