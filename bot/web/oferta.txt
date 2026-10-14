@@ -1,0 +1,51 @@
+# “huquqsavoljavob” xizmatidan foydalanish shartlari va ommaviy oferta
+Tahrir sanasi: 2026-yil 15-oktabr
+
+## 1. Umumiy qoidalar
+1.1. Ushbu hujjat @huquqsavoljavob_bot Telegram boti va “huquqsavoljavob” mini ilovasi (keyingi o‘rinlarda — Xizmat) dan foydalanish shartlarini belgilaydi. Hujjat O‘zbekiston Respublikasi Fuqarolik kodeksiga muvofiq ommaviy oferta hisoblanadi.
+1.2. Foydalanuvchi “Shartlarga roziman” tugmasini bosishi ushbu shartlarni to‘liq va so‘zsiz qabul qilganini (aksept) bildiradi. Shartlarga rozi bo‘lmagan shaxs Xizmatdan foydalanmasligi lozim.
+1.3. Xizmat tuzuvchisi va administratori (keyingi o‘rinlarda — Ijrochi) bilan bot orqali (“Fikr bildirish” bo‘limi) yoki to‘lov oynasida ko‘rsatilgan telefon raqami orqali bog‘lanish mumkin.
+1.4. Ijrochi ushbu shartlarni o‘zgartirishi mumkin. Yangi tahrir Xizmatda e’lon qilingan paytdan kuchga kiradi; zarur hollarda foydalanuvchidan qayta rozilik so‘raladi.
+
+## 2. Xizmat mazmuni
+2.1. Xizmat huquqshunoslik fanlari bo‘yicha o‘quv savol-javoblari bilan mustaqil ishlash imkonini beradi: “Davlat va huquq asoslari” darsliklari (8–11-sinflar) va qonunchilik hujjatlari asosida tuzilgan savol-javob kartochkalari, izohlar va o‘zlashtirish statistikasi.
+2.2. Xizmat o‘quv-yordamchi vosita hisoblanadi. U rasmiy huquqiy maslahat, rasmiy test yoki imtihon materiali, normativ-huquqiy hujjatning rasmiy matni emas. Normativ-huquqiy hujjatlarning rasmiy matnlari Qonunchilik ma’lumotlari milliy bazasida (lex.uz) e’lon qilinadi.
+2.3. Xizmatda demo kirish (har bir mavzu va hujjatdan cheklangan miqdordagi savollar) va to‘liq kirish (barcha savol-javoblar) mavjud. To‘liq kirish tanlangan tarif muddatiga Ijrochi tasdiqlaganidan keyin ochiladi. Ijrochi muayyan muddatga barcha foydalanuvchilar uchun bepul kirish e’lon qilishi mumkin.
+2.4. Xizmatga kirish uchun foydalanuvchi o‘z telefon raqamini Telegram orqali yuboradi.
+
+## 3. Sun’iy intellekt va xatoliklar to‘g‘risida ogohlantirish
+3.1. Xizmatdagi savol-javoblar va izohlar sun’iy intellekt yordamida darsliklar va qonunchilik hujjatlari matnlari asosida ishlab chiqilgan.
+3.2. Sun’iy intellekt xato qilishi mumkin. Savollar, javoblar va izohlarda noaniqlik, xatolik, to‘liq bo‘lmagan yoki eskirgan ma’lumot uchrashi mumkin.
+3.3. Qonunchilik o‘zgarib turadi. Foydalanuvchi muhim ma’lumotni (ayniqsa imtihon, ish yoki huquqiy masala uchun) rasmiy manbalardan mustaqil tekshirishi lozim.
+3.4. Xato yoki noaniqlik topsangiz, “Fikr bildirish” orqali xabar bering — bu Xizmatni yaxshilashga yordam beradi.
+
+## 4. Javobgarlikni cheklash
+4.1. Ijrochi savol-javoblar mazmuni bo‘yicha hech qanday pulli (moddiy) majburiyat olmaydi. Xizmat ma’lumotlariga tayanib qabul qilingan qarorlar, imtihon yoki test natijalari, shuningdek ular bilan bog‘liq har qanday zarar uchun Ijrochi javobgar emas.
+4.2. Xizmat “boricha” taqdim etiladi. Ijrochi Xizmatning uzluksiz va xatosiz ishlashini kafolatlamaydi; texnik ishlar uchun Xizmat vaqtincha to‘xtatilishi mumkin.
+
+## 5. To‘lov, obuna va to‘lovni qaytarish
+5.1. To‘liq kirish narxi va muddatlari (tariflar) Xizmatda ko‘rsatiladi. Narx nolga teng bo‘lishi mumkin. To‘lov Ijrochi ko‘rsatgan rekvizitlarga amalga oshiriladi va to‘lov cheki Xizmat orqali yuboriladi.
+5.2. To‘liq kirish Ijrochi tasdiqlagan muddat davomida amal qiladi. Muddat tugagach, kirish avtomatik ravishda demo holatiga qaytadi. Ijrochi tasdiqlashda chegirma qo‘llashi yoki boshqa muddat belgilashi mumkin.
+5.3. To‘langan summa faqat Xizmat (bot va mini ilova) ishlamagan holatda, foydalanuvchining to‘lovdan keyin 1 (bir) sutka ichida yuborgan talabiga asosan qaytarilishi mumkin. Boshqa hollarda to‘langan summa qaytarilmaydi.
+5.4. Ortiqcha to‘lab yuborilgan va shubhali to‘lovlar qonunchilikda belgilangan tartibda qaytarilishi mumkin.
+5.5. Bank va to‘lov tizimlari komissiyalari foydalanuvchi zimmasida bo‘ladi.
+
+## 6. Foydalanish qoidalari
+6.1. Foydalanuvchi o‘z hisobidan faqat o‘zi foydalanadi va kirish huquqini boshqalarga bermaydi.
+6.2. Xizmatdagi savol-javoblar, izohlar va boshqa materiallarni nusxalash, skrinshot yoki ekran yozuvini olish, tarqatish, sotish, boshqa sayt, kanal yoki ilovalarda joylashtirish taqiqlanadi.
+6.3. Xizmat materiallarini avtomatlashtirilgan vositalar (dastur, skript, bot) yordamida yuklab olish taqiqlanadi.
+6.4. Soxta yoki boshqa shaxsga tegishli to‘lov chekini yuborish, Xizmat ishiga xalaqit berish, fikrlarda haqoratli so‘zlar ishlatish taqiqlanadi.
+6.5. Ushbu qoidalar buzilganda Ijrochi foydalanuvchining kirishini cheklashi mumkin.
+
+## 7. Shaxsga doir ma’lumotlar
+7.1. Xizmat ishlashi uchun foydalanuvchining Telegram identifikatori, ismi, telefon raqami, yuborgan to‘lov cheklari, fikrlari va o‘quv natijalari qayta ishlanadi.
+7.2. Bu ma’lumotlar faqat Xizmat ko‘rsatish, to‘lovni tasdiqlash va foydalanuvchi bilan bog‘lanish uchun ishlatiladi va qonunchilikda nazarda tutilgan hollardan tashqari uchinchi shaxslarga berilmaydi.
+7.3. Foydalanuvchi shartlarga rozilik berish orqali o‘z shaxsga doir ma’lumotlari shu maqsadlarda qayta ishlanishiga rozilik bildiradi.
+
+## 8. Nizolarni hal etish
+8.1. Xizmat va to‘lovlar bilan bog‘liq nizolar sudgacha hal etish tartibida hal etiladi: foydalanuvchi bot orqali yozma murojaat (talabnoma) yuboradi, Ijrochi uni 10 kun ichida ko‘rib chiqib, javob beradi.
+8.2. Nizo sudgacha hal etish tartibida hal etilmasa, O‘zbekiston Respublikasi qonunchiligida belgilangan tartibda ko‘rib chiqiladi.
+
+## 9. Yakuniy qoidalar
+9.1. Ushbu shartlarda nazarda tutilmagan munosabatlar O‘zbekiston Respublikasi qonunchiligi bilan tartibga solinadi.
+9.2. Shartlarning amaldagi tahriri doimo bot va mini ilovada (“Foydalanish shartlari” bo‘limi) mavjud.

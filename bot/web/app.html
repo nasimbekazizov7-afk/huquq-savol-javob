@@ -304,6 +304,24 @@ details.stsrc>summary::-webkit-details-marker,details.stch>summary::-webkit-deta
 details.stsrc>summary>span:first-child::before,details.stch>summary>span:first-child::before{content:"▸ ";color:var(--muted)}
 details[open].stsrc>summary>span:first-child::before,details[open].stch>summary>span:first-child::before{content:"▾ "}
 details.stch .chgo{margin-top:0;padding-top:2px}
+
+/* nusxa olish va skrinshotdan himoya */
+body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input,textarea,select,.sel{-webkit-user-select:text;user-select:text}
+img,svg{-webkit-user-drag:none;user-drag:none}
+body.shield #view,body.shield header.top{filter:blur(18px);transition:none}
+@media print{html,body{display:none!important}}
+.wm{position:fixed;inset:0;pointer-events:none;z-index:45;opacity:.07;background-repeat:repeat}
+/* to'lov oynasi */
+.aiwarn{font-size:11.5px;color:var(--muted);background:var(--sunk);border-radius:10px;padding:6px 10px;margin:0 0 10px}
+.payd{display:flex;flex-direction:column;gap:8px}
+.pcard{background:linear-gradient(135deg,#0d5ea8,#13406e);color:#fff;border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.pcard small{opacity:.8;font-size:11.5px}.pcard .cardno{font-size:19px;letter-spacing:1.5px;font-variant-numeric:tabular-nums;-webkit-user-select:text;user-select:text}
+.pqr{width:180px;max-width:70%;align-self:center;border-radius:12px;border:1px solid var(--line);background:#fff;padding:6px}
+.drop{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;min-height:120px;border:2px dashed var(--accent);border-radius:14px;background:var(--accent-soft);padding:16px;cursor:pointer}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop .dico{font-size:30px;line-height:1}.drop b{font-size:15px;color:var(--accent)}.drop small{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.drop.has{border-style:solid;border-color:var(--know);background:var(--know-soft)}.drop.has b{color:var(--know)}
 /* ===== Telegram Mini App: ixcham, och moviy fon ===== */
 body.mini{--bg:#e7f2fc;--sunk:#dbe9f6;--line:#c9dbec;--accent:#0d5ea8;--accent-soft:#d6e8f8;font-size:13.5px;padding:0 8px}
 body.mini header.top{padding-block:6px 4px;gap:6px;flex-wrap:nowrap}
@@ -496,9 +514,9 @@ function P(id){return ST.q[id]||(ST.q[id]={b:0,d:0,n:0,k:0,p:0,u:0,l:null})}
 function peek(id){return ST.q[id]}
 
 /* ---------- Sozlamalar ---------- */
-const DEF={v:3,secs:ALLSECS.slice(),count:"all",lvl:"aralash",time:0};
+const DEF={v:4,secs:[],count:"all",lvl:"aralash",time:0};   // kirganda manbalar belgilanmagan
 let CFG=Object.assign({},DEF,MINI?{}:(ST.set||{}));   // Mini App: har kirishda (yangilanganda) sozlamalar asl holiga qaytadi
-if(CFG.v!==3) CFG=Object.assign({},DEF); // yangi odatiy sozlamalar: hammasi, aralash, vaqt cheklanmagan
+if(CFG.v!==4) CFG=Object.assign({},DEF); // yangi odatiy sozlamalar: hammasi, aralash, vaqt cheklanmagan
 delete CFG.mode; delete CFG.typed; delete CFG.lessons;
 
 function poolFor(cfg){
@@ -552,7 +570,8 @@ function _render(){
   else v.innerHTML=`<div class="scrollv">${backBar()+viewCoverage()}</div>`;
   if(RESULT) v.insertAdjacentHTML("beforeend",viewResult());
   if(BUY) v.insertAdjacentHTML("beforeend",viewBuy());
-  bind(); if(BUY) bindBuy();
+  if(FB) v.insertAdjacentHTML("beforeend",viewFb());
+  bind(); if(BUY) bindBuy(); if(FB) bindFb();
   if(TAB==="mashq"&&SES) drawRing();
 }
 
@@ -651,6 +670,8 @@ function viewSetup(){
     </aside>
     <div class="navs">
       <button class="navcard" data-nav="stat"><span><b>${TE("O‘zlashtirish statistikasi")}</b><small>${TE("ko‘rilgan "+seen+" ta · bildim "+(tt2?Math.round(kk/tt2*100):0)+"%")}</small></span><span aria-hidden="true">›</span></button>
+      ${MINI?`<button class="navcard" id="openFb"><span><b>${TE("💬 Fikr bildirish")}</b><small>${TE("taklif, fikr yoki xato haqida yozing")}</small></span><span aria-hidden="true">›</span></button>
+      <button class="navcard" id="openTerms"><span><b>${TE("📄 Foydalanish shartlari")}</b><small>${TE("ommaviy oferta va qoidalar")}</small></span><span aria-hidden="true">›</span></button>`:""}
       ${MINI?"":`<button class="navcard" data-nav="qamrov"><span><b>${TE("Qamrov xaritasi")}</b><small>${TE(BANK.sentences.length+" gap · "+qs.length+" savol · 100%")}</small></span><span aria-hidden="true">›</span></button>`}
     </div>
   </div>
@@ -858,12 +879,14 @@ let BUY=null;  // {step:"chan"|"form"|"sent"|"pend", tariff, phone, err, busy}
 const fmtS=n=>(+n||0).toLocaleString("ru-RU");
 const dDate=t=>{const d=new Date(t*1000); return String(d.getDate()).padStart(2,"0")+"."+String(d.getMonth()+1).padStart(2,"0")+"."+d.getFullYear();};
 function miniBanner(){
-  if(MINI.level>=2) return `<div class="minilock ok">${TE(MINI.until?"✅ To‘liq kirish: "+dDate(MINI.until)+" gacha":"✅ To‘liq kirish ochiq")}</div>`;
+  const ai=`<div class="aiwarn">${TE("⚠️ Savol-javoblar sun’iy intellekt yordamida tuzilgan — xatolar bo‘lishi mumkin. Muhim ma’lumotni rasmiy manbadan (lex.uz) tekshiring.")}</div>`;
+  if(MINI.free_until&&!MINI.until) return `<div class="minilock ok">${TE("🎁 Hozir barcha savol-javoblar hamma uchun bepul: "+dDate(MINI.free_until)+" gacha")}</div>`+ai;
+  if(MINI.level>=2) return `<div class="minilock ok">${TE(MINI.until?"✅ To‘liq kirish: "+dDate(MINI.until)+" gacha":"✅ To‘liq kirish ochiq")}</div>`+ai;
   return `<div class="minilock"><div>${TE("🆓 Demo: har bir darslik mavzusidan va har bir qonunchilik hujjatidan "+MINI.demo_n+" tadan savol ochiq. Jami: "+fmtS(MINI.total)+" ta savol-javob.")}</div>
     ${MINI.pending?`<div class="pend">${TE("⏳ So‘rovingiz admin tomonidan ko‘rib chiqilmoqda.")}</div>`:""}
-    <button class="btn primary buyb" data-buy="1">${TE("🔓 To‘liq kirish — barcha savol-javoblar")}</button></div>`;
+    <button class="btn primary buyb" data-buy="1">${TE("🔓 To‘liq kirish — barcha savol-javoblar")}</button></div>`+ai;
 }
-function openBuy(){ if(!MINI||MINI.level>=2) return; BUY={step:MINI.member===false?"chan":(MINI.pending?"pend":"form"),tariff:(MINI.tariffs[0]||{}).id,phone:MINI.phone||"",err:""}; render();
+function openBuy(){ if(!MINI||MINI.level>=2) return; BUY={step:MINI.member===false?"chan":(MINI.pending?"pend":"form"),tariff:(MINI.tariffs[0]||{}).id,err:""}; render();
   miniPost("api/check").then(j=>{ if(!BUY||j.member===undefined) return; MINI.member=!!j.member; if(!j.member&&BUY.step!=="sent"){BUY.step="chan"; render();} }); }
 const curTar=()=>MINI.tariffs.find(t=>t.id===BUY.tariff)||MINI.tariffs[0]||{price:0};
 function viewBuy(){
@@ -875,15 +898,20 @@ function viewBuy(){
     <div class="row"><button class="btn" id="bNew">${TE("Yangi so‘rov yuborish")}</button></div>`;
   else if(BUY.step==="sent") body=`<p>${TE("✅ So‘rovingiz adminga yuborildi. Admin tasdiqlagach botda xabar keladi; ilovani qayta ochsangiz, barcha savol-javoblar ochiq bo‘ladi.")}</p>
     <div class="row"><button class="btn primary" id="bClose">${TE("Yopish")}</button></div>`;
-  else { const t=curTar(), paid=t.price>0;
+  else { const t=curTar(), paid=t.price>0, P=MINI.pay||{};
+    const per=x=>[x.months?(x.months%12===0?x.months/12+" yil":x.months+" oy"):"",x.days?x.days+" kun":""].filter(Boolean).join(" ");
     body=`<div class="lbl" style="margin:0">${TE("Obuna muddatini tanlang")}</div>
-    <div class="tars">${MINI.tariffs.map(x=>`<label class="tar ${x.id===BUY.tariff?"on":""}"><input type="radio" name="tar" value="${esc(x.id)}" ${x.id===BUY.tariff?"checked":""}><span><b>${TE(x.name)}</b><small>${TE(x.price>0?fmtS(x.price)+" so‘m":"bepul")}</small></span></label>`).join("")}</div>
-    ${paid&&MINI.paytext?`<div class="note">${TE(MINI.paytext)}</div>`:""}
-    <label class="fl"><span>${TE("Telefon raqamingiz")}</span><input type="tel" id="bPhone" value="${esc(BUY.phone)}" placeholder="+998 __ ___ __ __" autocomplete="tel"></label>
-    ${TGW&&TGW.requestContact?`<button class="link" id="bTel" style="padding-left:0">${TE("📱 Telegram’dagi raqamimni olish")}</button>`:""}
-    ${paid?`<label class="fl"><span>${TE("To‘lov cheki (rasm yoki PDF)")}</span><input type="file" id="bFile" accept="image/*,application/pdf">${BUY.file?`<small class="ok">✓ ${esc(BUY.file.name)}</small>`:""}</label>`:`<p class="hint" style="margin:0">${TE("Bu muddat bepul — chek talab qilinmaydi.")}</p>`}
+    <div class="tars">${MINI.tariffs.map(x=>`<label class="tar ${x.id===BUY.tariff?"on":""}"><input type="radio" name="tar" value="${esc(x.id)}" ${x.id===BUY.tariff?"checked":""}><span><b>${TE(x.name)}</b><small>${TE(per(x)+" · "+(x.price>0?fmtS(x.price)+" so‘m":"bepul"))}</small></span></label>`).join("")}</div>
+    ${paid?`<div class="payd">
+      ${P.card?`<div class="pcard"><small>${TE("Karta raqami")}</small><b class="cardno">${esc(P.card)}</b>${P.owner?`<small>${TE(P.owner)}</small>`:""}</div>`:""}
+      ${P.qr?`<img class="pqr" src="pay/qr" alt="QR">`:""}
+      ${MINI.paytext?`<div class="note">${TE(MINI.paytext)}</div>`:""}
+      ${P.phone?`<div class="hint">${TE("Savollar bo‘yicha admin: ")}<a href="tel:${esc(P.phone.replace(/[^\d+]/g,""))}">${esc(P.phone)}</a></div>`:""}
+      <label class="drop ${BUY.file?"has":""}"><input type="file" id="bFile" accept="*/*"><span class="dico">📎</span><b>${TE(BUY.file?"Chek tanlandi":"To‘lov chekini tanlang")}</b><small>${BUY.file?esc(BUY.file.name):TE("rasm, skrinshot, PDF yoki istalgan fayl · 10 MB gacha")}</small></label></div>`
+      :`<p class="hint" style="margin:0">${TE("Bu muddat bepul — chek talab qilinmaydi. So‘rov adminga tasdiqlash uchun yuboriladi.")}</p>`}
     ${BUY.err?`<div class="err">${TE(BUY.err)}</div>`:""}
-    <button class="btn primary" id="bSend" ${BUY.busy?"disabled":""}>${TE(BUY.busy?"Yuborilmoqda…":"Adminga tasdiqlash uchun yuborish")}</button>`; }
+    <button class="btn primary" id="bSend" ${BUY.busy?"disabled":""}>${TE(BUY.busy?"Yuborilmoqda…":"Adminga tasdiqlash uchun yuborish")}</button>
+    <p class="hint" style="margin:0;font-size:11px">${TE("So‘rov yuborish orqali foydalanish shartlari va ommaviy oferta (to‘lovni qaytarish tartibi bilan) qabul qilingan hisoblanadi.")}</p>`; }
   return `<div class="modal" role="dialog" aria-modal="true"><div class="mbox buybox"><button class="mx" id="bX" aria-label="Yopish">✕</button>
     <h2>${TE("🔓 To‘liq kirish — barcha savol-javoblar")}</h2>${body}</div></div>`;
 }
@@ -896,19 +924,28 @@ function bindBuy(){
   on("#bChk",async()=>{BUY.busy=true;render(); const j=await miniPost("api/check"); BUY.busy=false;
     if(j.member){MINI.member=true; BUY.step=MINI.pending?"pend":"form"; BUY.err="";} else BUY.err=j.error||"Hali kanalga obuna bo‘lmagansiz. Obuna bo‘lib, qayta tekshiring.";
     render(); });
-  on("#bFile",e=>{BUY.file=e.target.files&&e.target.files[0]||null; const p=$("#bPhone"); if(p) BUY.phone=p.value; render();},"change");
+  on("#bFile",e=>{BUY.file=e.target.files&&e.target.files[0]||null; render();},"change");
   on("#bNew",()=>{BUY.step="form";render();});
-  document.querySelectorAll('input[name="tar"]').forEach(r=>r.addEventListener("change",e=>{const p=$("#bPhone"); if(p) BUY.phone=p.value; BUY.tariff=e.target.value; render();}));
-  on("#bTel",()=>{ try{ TGW.requestContact((ok,res)=>{ const p=ok&&res&&res.responseUnsafe&&res.responseUnsafe.contact&&res.responseUnsafe.contact.phone_number; if(p){BUY.phone=(String(p).startsWith("+")?"":"+")+p; render();} }); }catch(e){} });
-  on("#bSend",async()=>{ const ph=($("#bPhone").value||"").trim(); BUY.phone=ph; const t=curTar(), file=BUY.file;
-    if(ph.replace(/\D/g,"").length<9){BUY.err="Telefon raqamini to‘liq kiriting.";return render();}
+  document.querySelectorAll('input[name="tar"]').forEach(r=>r.addEventListener("change",e=>{BUY.tariff=e.target.value; render();}));
+  on("#bSend",async()=>{ const t=curTar(), file=t.price>0?BUY.file:null;
     if(t.price>0&&!file){BUY.err="To‘lov chekini (rasm yoki PDF) biriktiring.";return render();}
     if(file&&file.size>10*1024*1024){BUY.err="Fayl hajmi 10 MB dan oshmasin.";return render();}
     BUY.busy=true;BUY.err="";render();
-    const j=await miniPost("api/request",{tariff:t.id,phone:ph,file});
+    const j=await miniPost("api/request",{tariff:t.id,file});
     BUY.busy=false; if(j.ok){BUY.step="sent"; MINI.pending=true;} else if(j.need_channel){MINI.member=false; BUY.step="chan"; BUY.err="";} else BUY.err=j.error||"Yuborib bo‘lmadi.";
     render(); });
 }
+let FB=null; // {text, busy, err, sent}
+function viewFb(){ return `<div class="modal" role="dialog" aria-modal="true"><div class="mbox"><button class="mx" id="fX" aria-label="Yopish">✕</button>
+  <h2>${TE("💬 Fikr bildirish")}</h2>${FB.sent?`<p>${TE("✅ Rahmat! Fikringiz adminga yuborildi. Javob bo‘lsa, botda keladi.")}</p><button class="btn primary" id="fX2">${TE("Yopish")}</button>`:
+  `<p class="hint" style="margin:0">${TE("Taklif, fikr yoki savol-javobdagi xato haqida yozing (xato bo‘lsa, savol matnini ham ko‘rsating).")}</p>
+  <textarea id="fT" class="sel" maxlength="3000" rows="5">${esc(FB.text||"")}</textarea>${FB.err?`<div class="err">${TE(FB.err)}</div>`:""}
+  <button class="btn primary" id="fS" ${FB.busy?"disabled":""}>${TE(FB.busy?"Yuborilmoqda…":"Yuborish")}</button>`}</div></div>`; }
+function bindFb(){ const on=(s,f)=>{const e=$(s); if(e) e.addEventListener("click",f);};
+  on("#fX",()=>{FB=null;render();}); on("#fX2",()=>{FB=null;render();});
+  on("#fS",async()=>{ FB.text=$("#fT").value; if(!FB.text.trim()){FB.err="Matn bo‘sh";return render();} FB.busy=true;render();
+    const j=await miniPost("api/feedback",{text:FB.text}); FB.busy=false; if(j.ok) FB.sent=true; else FB.err=j.error||"Yuborib bo‘lmadi"; render(); }); }
+function openUrl(u){ try{ if(TGW&&TGW.openLink) TGW.openLink(u); else window.open(u,"_blank"); }catch(e){ window.open(u,"_blank"); } }
 function backBar(){return `<div class="backbar"><button class="btn" data-nav="mashq">${TE("← Savol-javoblar")}</button></div>`}
 /* ---------- AI ustoz ---------- */
 function srcText(q){return q.src.map(id=>SENT[id]&&("["+id+", "+SENT[id].page+"-bet] "+SENT[id].text)).join("\n")}
@@ -1094,6 +1131,8 @@ function bind(){
   on("#allBook",e=>setKeys(ALLSECS,e.target.checked),"change");
   on("[data-stall]",e=>setKeys(SOURCES.filter(s=>s.type===e.target.dataset.stall).flatMap(srcKeys),e.target.checked),"change");
   on("[data-buy]",e=>{e.preventDefault(); e.stopPropagation(); openBuy();});
+  on("#openFb",()=>{FB={text:""}; render();});
+  on("#openTerms",()=>openUrl(location.origin+"/oferta"+(SCRIPT==="cyr"?"?s=cyr":"")));
   on("[data-stf]",e=>{STF=e.currentTarget.dataset.stf; render();});
   on("details[data-sto]",e=>{const id=e.currentTarget.dataset.sto; e.currentTarget.open?STOPEN.add(id):STOPEN.delete(id);},"toggle");
   on("#selAll",()=>setCfg("secs",ALLSECS.slice()));
@@ -1148,7 +1187,29 @@ document.addEventListener("keydown",e=>{
   else if(SES.revealed&&["1","2","3"].includes(e.key)) grade({1:"u",2:"p",3:"k"}[e.key]);
   else if(e.key==="ArrowLeft") goTo(SES.i-1); else if(e.key==="ArrowRight") goTo(SES.i+1);
 });
-if(MINI){ document.documentElement.setAttribute("data-theme","light"); document.body.classList.add("mini");
+
+/* ---------- Nusxa olish va skrinshotdan himoya ---------- */
+(function(){
+  const ok=e=>e.target&&e.target.closest&&e.target.closest("input,textarea,select,.sel");
+  ["copy","cut","contextmenu","selectstart","dragstart"].forEach(ev=>document.addEventListener(ev,e=>{ if(!ok(e)) e.preventDefault(); },true));
+  document.addEventListener("paste",e=>{ if(!ok(e)) e.preventDefault(); },true);
+  const shield=ms=>{ document.body.classList.add("shield"); clearTimeout(shield.t); shield.t=setTimeout(()=>document.body.classList.remove("shield"),ms); };
+  const wipe=()=>{ try{ navigator.clipboard&&navigator.clipboard.writeText(""); }catch(_){ } };
+  document.addEventListener("keydown",e=>{ const k=(e.key||"").toLowerCase();
+    if(k==="printscreen"||k==="snapshot"){ e.preventDefault(); shield(3000); wipe(); }
+    if((e.ctrlKey||e.metaKey)&&["c","x","a","s","p","u"].includes(k)&&!ok(e)) e.preventDefault();
+    if((e.metaKey||k==="meta"||k==="os")&&e.shiftKey) shield(4000);       // macOS Cmd+Shift+3/4/5, Windows Win+Shift+S
+    if(e.ctrlKey&&e.shiftKey&&["i","j","c"].includes(k)) e.preventDefault();
+    if(k==="f12") e.preventDefault();
+  },true);
+  document.addEventListener("keyup",e=>{ if((e.key||"").toLowerCase()==="printscreen"){ shield(3000); wipe(); } },true);
+  window.addEventListener("blur",()=>shield(864e5)); window.addEventListener("focus",()=>shield(250));
+  document.addEventListener("visibilitychange",()=>shield(document.hidden?864e5:250));
+  window.addEventListener("beforeprint",()=>shield(5000));
+})();
+if(MINI&&MINI.uid){ const s=`<svg xmlns="http://www.w3.org/2000/svg" width="260" height="160"><text x="10" y="90" transform="rotate(-25 130 80)" font-family="sans-serif" font-size="15" fill="#0b2545">huquqsavoljavob · ID ${MINI.uid}</text></svg>`;
+  const w=document.createElement("div"); w.className="wm"; w.style.backgroundImage=`url("data:image/svg+xml;utf8,${encodeURIComponent(s)}")`; document.body.appendChild(w); }
+if(MINI){ document.documentElement.setAttribute("data-theme","light"); if(MINI.cyr&&(()=>{try{return !localStorage.getItem(LS+"-sc")}catch(e){return true}})()){ SCRIPT="cyr"; $("#scCyr").setAttribute("aria-pressed","true"); $("#scLat").setAttribute("aria-pressed","false"); } document.body.classList.add("mini");
   const b=$(".brand"); if(b) b.innerHTML="<b>huquqsavoljavob</b>"; document.title="huquqsavoljavob";
   let sp=""; try{sp=(TGW&&TGW.initDataUnsafe&&TGW.initDataUnsafe.start_param)||new URLSearchParams(location.search).get("buy")||"";}catch(e){}
   if(sp) setTimeout(openBuy,50); }

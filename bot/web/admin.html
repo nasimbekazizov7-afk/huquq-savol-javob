@@ -36,7 +36,7 @@ textarea{min-height:90px}
 </style></head>
 <body>
 <header><h1>🛠 Admin panel · @huquqsavoljavob_bot</h1>
-<nav id="nav"><button data-tab="sum" aria-pressed="true">Umumiy</button><button data-tab="rec">So‘rovlar / cheklar<span id="pb"></span></button><button data-tab="usr">Foydalanuvchilar</button><button data-tab="pay">To‘lovlar</button><button data-tab="set">Tariflar va sozlamalar</button><button data-tab="bc">Xabar yuborish</button></nav></header>
+<nav id="nav"><button data-tab="sum" aria-pressed="true">Umumiy</button><button data-tab="rec">So‘rovlar / cheklar<span id="pb"></span></button><button data-tab="usr">Foydalanuvchilar</button><button data-tab="pay">To‘lovlar</button><button data-tab="fb">Fikrlar<span id="fbb"></span></button><button data-tab="set">Tariflar va sozlamalar</button><button data-tab="bc">Xabar yuborish</button></nav></header>
 <main id="v"><div class="empty">Yuklanmoqda…</div></main>
 <div class="toast" id="toast"></div>
 <script>
@@ -49,16 +49,18 @@ async function api(act,body={}){const r=await fetch("admin/api/"+act,{method:"PO
   if(r.status===403) throw "Ruxsat yo‘q: panel faqat admin uchun, Telegram ichidan oching."; return r.json();}
 const dd=t=>t?new Date(t*1000).toLocaleDateString("ru-RU",{timeZone:"Asia/Tashkent"}):"—";
 const tname=(S,id,m)=>{const x=(S.tariffs||[]).find(t=>t.id===id); return x?x.name:(m?m+" oy":"—")};
-const tarOpts=(S,selM)=>(S.tariffs||[]).map(x=>`<option value="${x.months}" data-price="${x.price}" ${+selM===x.months?"selected":""}>${esc(x.name)} — ${x.months} oy · ${fmt(x.price)} so‘m</option>`).join("")+`<option value="custom">Boshqa muddat…</option>`;
+const per=(m,d)=>[m?(m%12===0?m/12+" yil":m+" oy"):"",d?d+" kun":""].filter(Boolean).join(" ")||"muddatsiz";
+const tarOpts=(S,selM,selD)=>(S.tariffs||[]).map(x=>`<option value="${x.months}:${x.days||0}" data-price="${x.price}" ${+selM===x.months&&+(selD||0)===+(x.days||0)?"selected":""}>${esc(x.name)} — ${per(x.months,x.days)} · ${fmt(x.price)} so‘m</option>`).join("")+`<option value="custom">Boshqa muddat…</option>`;
 const ST={pending:["pending","Kutilmoqda"],ok:["ok","Tasdiqlangan"],no:["no","Rad etilgan"]};
 async function render(){
   document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.tab===TAB)));
   const v=$("#v");
   try{
-    const S=await api("summary"); $("#pb").innerHTML=S.pending?`<span class="badge">${S.pending}</span>`:"";
+    const S=await api("summary"); $("#pb").innerHTML=S.pending?`<span class="badge">${S.pending}</span>`:""; $("#fbb").innerHTML=S.fb_new?`<span class="badge">${S.fb_new}</span>`:"";
+    const stat=(S.maint_until>S.now?`<div class="card" style="border-color:var(--no)">⛔ <b>Bot va ilova to‘xtatilgan</b> — ${dt(S.maint_until)} gacha</div>`:"")+(S.free_until>S.now?`<div class="card" style="border-color:var(--ok)">🎁 <b>Hamma uchun bepul</b> — ${dt(S.free_until)} gacha</div>`:"");
     if(TAB==="sum"){
       const bars=(arr)=>{const m=Math.max(1,...arr.map(x=>x[1]));return `<div class="bars">${arr.map(x=>`<i title="${x[0]}: ${fmt(x[1])}" style="height:${x[1]/m*100}%"></i>`).join("")||'<span class="mut">Hali maʼlumot yo‘q</span>'}</div>`};
-      v.innerHTML=`<div class="grid">
+      v.innerHTML=stat+`<div class="grid">
         <div class="tile"><b>${fmt(S.users)}</b><span>foydalanuvchi (bugun +${S.new_today}, 7 kunda +${S.new_week})</span></div>
         <div class="tile"><b>${fmt(S.active_week)}</b><span>7 kunda faol</span></div>
         <div class="tile"><b>${fmt(S.paid)}</b><span>faol to‘liq kirish (obuna)</span></div>
@@ -70,7 +72,7 @@ async function render(){
         <div class="tile"><b>${fmt(S.answers)}</b><span>javob berilgan kartochka</span></div></div>
         <div class="card"><h3>Kunlik tushum (30 kun)</h3>${bars(S.daily)}</div>
         <div class="card"><h3>Yangi foydalanuvchilar (30 kun)</h3>${bars(S.signups)}</div>
-        <div class="card"><h3>Joriy sozlamalar</h3><div>Tariflar: ${(S.tariffs||[]).map(x=>`<b>${esc(x.name)}</b> (${x.months} oy) — ${x.price?fmt(x.price)+" so‘m":"bepul"}`).join(" · ")}</div>
+        <div class="card"><h3>Joriy sozlamalar</h3><div>Tariflar: ${(S.tariffs||[]).map(x=>`<b>${esc(x.name)}</b> (${per(x.months,x.days)}) — ${x.price?fmt(x.price)+" so‘m":"bepul"}`).join(" · ")}</div>
           <div class="mut" style="margin-top:4px">Savollar: ${fmt(S.questions)} ta (demo: ${fmt(S.demo)} ta) · To‘liq kirish: <b>${S.auto_open?"avtomatik ochiladi":"faqat admin tasdig‘i bilan"}</b></div></div>`;
     }
     if(TAB==="rec"){
@@ -78,14 +80,14 @@ async function render(){
       v.innerHTML=`<div class="row" style="margin-bottom:6px">${["pending","ok","no","all"].map(s=>`<button class="btn ${RST===s?"pri":""}" data-rst="${s}">${s==="all"?"Hammasi":ST[s][1]}</button>`).join("")}</div>
       <div class="card list rc">${R.length?R.map(r=>`<div class="it"><div class="row" style="justify-content:space-between"><b>#${r.id} · ${esc(r.name||"—")}</b><span class="pill ${ST[r.status][0]}">${ST[r.status][1]}</span></div>
         <div class="mut">ID ${r.uid} · 📞 ${esc(r.phone||"—")} · ${r.kind==="mini"?"Ilova orqali":r.kind==="invoice"?"Bot ichida to‘lov":"Chat orqali chek"} · ${dt(r.t)}${r.dt?" · ko‘rildi "+dt(r.dt):""}${r.note&&r.status!=="pending"&&!/\//.test(r.note)?" · "+esc(r.note):""}</div>
-        <div>So‘ralgan muddat: <b>${esc(tname(S,r.tariff,r.months))}</b>${r.months?` (${r.months} oy)`:""} · ${r.amount?fmt(r.amount)+" so‘m":"bepul"}${r.until&&r.until>Date.now()/1000?` · <span class="pill ok">hozir ${dd(r.until)} gacha ochiq</span>`:""}</div>
+        <div>So‘ralgan muddat: <b>${esc(tname(S,r.tariff,r.months))}</b> (${per(r.months,r.days)}) · ${r.amount?fmt(r.amount)+" so‘m":"bepul"}${r.until&&r.until>Date.now()/1000?` · <span class="pill ok">hozir ${dd(r.until)} gacha ochiq</span>`:""}</div>
         ${r.has_file?((r.ftype==="photo")?`<img loading="lazy" src="admin/file/${r.id}?init=${encodeURIComponent(INIT)}" alt="Chek #${r.id}">`:`<a href="admin/file/${r.id}?init=${encodeURIComponent(INIT)}" target="_blank">📎 Chekni ochish</a>`):(r.amount?`<div class="mut" style="color:var(--no)">Chek biriktirilmagan</div>`:"")}
         ${r.status==="pending"?`<div class="appr"><div class="mut">Tasdiqlashda muddat va summani tanlang (chegirma qilish mumkin):</div>
-          <div class="row"><select id="tm${r.id}" data-rid="${r.id}" style="flex:1;min-width:200px">${tarOpts(S,r.months)}</select>
-          <input type="number" id="cm${r.id}" min="1" max="120" placeholder="oy" style="max-width:90px;display:none" aria-label="Oy"></div>
+          <div class="row"><select id="tm${r.id}" data-rid="${r.id}" style="flex:1;min-width:200px">${tarOpts(S,r.months,r.days)}</select>
+          <span id="cw${r.id}" class="row" style="display:none;flex-wrap:nowrap"><input type="number" id="cm${r.id}" min="0" max="120" placeholder="oy" style="width:80px" aria-label="Oy"><span class="mut">oy</span><input type="number" id="cd${r.id}" min="0" max="3650" placeholder="kun" style="width:80px" aria-label="Kun"><span class="mut">kun</span></span></div>
           <div class="row" style="margin-top:6px"><input type="number" id="am${r.id}" value="${r.amount||0}" style="max-width:160px" aria-label="Summa"><span class="mut">so‘m</span>
           <button class="btn ok" data-ok="${r.id}">✅ Tasdiqlash va ochish</button></div></div>
-          <div class="row" style="margin-top:6px"><input id="nt${r.id}" placeholder="Rad etish sababi (ixtiyoriy)" style="flex:1;min-width:160px"><button class="btn no" data-no="${r.id}">❌ Rad etish</button></div>`:`<div class="mut">Tasdiqlangan muddat: ${r.months||"—"} oy · Summa: ${fmt(r.amount)} so‘m${r.status==="no"&&r.note?" · Sabab: "+esc(r.note):""}</div>`}</div>`).join(""):'<div class="empty">So‘rov yo‘q</div>'}</div>`;
+          <div class="row" style="margin-top:6px"><input id="nt${r.id}" placeholder="Rad etish sababi (ixtiyoriy)" style="flex:1;min-width:160px"><button class="btn no" data-no="${r.id}">❌ Rad etish</button></div>`:`<div class="mut">Tasdiqlangan muddat: ${per(r.months,r.days)} · Summa: ${fmt(r.amount)} so‘m${r.status==="no"&&r.note?" · Sabab: "+esc(r.note):""}</div>`}</div>`).join(""):'<div class="empty">So‘rov yo‘q</div>'}</div>`;
     }
     if(TAB==="usr"){
       const U=await api("users",{q:UQ,filter:UF,offset:UOFF});
@@ -95,7 +97,7 @@ async function render(){
       <div class="card list">${U.rows.map(u=>`<div class="it row" style="justify-content:space-between"><div><b>${esc(u.name||"—")}</b> <span class="mut">ID ${u.id}</span><br>
         <span class="mut">📞 ${esc(u.phone||"—")} · ro‘yxatdan: ${dt(u.created)} · oxirgi: ${dt(u.last)} · javoblar: ${fmt(u.answers)}</span></div>
         <span class="row">${u.paid?`<span class="pill ok">muddatsiz</span>`:(u.until>U.now?`<span class="pill ok">${dd(u.until)} gacha</span>`:(u.until?`<span class="pill no">${dd(u.until)} da tugagan</span>`:""))}
-          <select id="gm${u.id}" style="width:auto">${(S.tariffs||[]).map(x=>`<option value="${x.months}">+${x.months} oy</option>`).join("")}<option value="0">muddatsiz</option></select>
+          <select id="gm${u.id}" style="width:auto">${(S.tariffs||[]).map(x=>`<option value="${x.months}:${x.days||0}">+${per(x.months,x.days)}</option>`).join("")}<option value="0:7">+7 kun</option><option value="0:0">muddatsiz</option></select>
           <button class="btn pri" data-open="${u.id}">🔓 Berish / uzaytirish</button>${u.paid||u.until>U.now?`<button class="btn" data-close="${u.id}">Yopish</button>`:""}</span></div>`).join("")||'<div class="empty">Foydalanuvchi yo‘q</div>'}</div>
       <div class="row" style="justify-content:center;margin-top:10px">${UOFF?'<button class="btn" data-pg="-1">← Oldingi</button>':""}${UOFF+50<U.total?'<button class="btn" data-pg="1">Keyingi →</button>':""}</div>`;
     }
@@ -106,17 +108,38 @@ async function render(){
     }
     if(TAB==="set"){
       if(!TAR) TAR=JSON.parse(JSON.stringify(S.tariffs||[]));
-      v.innerHTML=`<div class="card"><h3>Obuna tariflari</h3><div class="mut" style="margin-bottom:8px">Foydalanuvchi “To‘liq kirish” bosganda shu ro‘yxatdan muddat tanlaydi. Narx 0 bo‘lsa, chek talab qilinmaydi (faqat kanal obunasi va telefon raqami). Tasdiqlashda istalgan muddat va summani (chegirma) tanlash mumkin.</div>
+      const P=S.pay||{};
+      v.innerHTML=`<div class="card"><h3>🎁 Hamma uchun bepul davr</h3>
+        ${S.free_until>S.now?`<div>Hozir yoqilgan: <b>${dt(S.free_until)}</b> gacha. Bu davrda barcha foydalanuvchilar chek yubormasdan va tasdiqlashsiz to‘liq kiradi.</div><div class="row" style="margin-top:8px"><button class="btn no" id="freeOff">To‘xtatish</button></div>`
+        :`<div class="mut">Yoqilsa, belgilangan muddatda hamma foydalanuvchiga to‘liq kirish avtomatik ochiladi (chek va tasdiqlash talab qilinmaydi).</div>`}
+        <div class="row" style="margin-top:8px"><input type="number" id="frM" min="0" placeholder="oy" style="width:90px"><span class="mut">oy</span><input type="number" id="frD" min="0" placeholder="kun" style="width:90px"><span class="mut">kun</span><button class="btn ok" id="freeOn">${S.free_until>S.now?"Muddatni o‘zgartirish (hozirdan)":"Yoqish"}</button></div></div>
+      <div class="card"><h3>⛔ Bot va ilovani vaqtincha to‘xtatish</h3>
+        ${S.maint_until>S.now?`<div>To‘xtatilgan: <b>${dt(S.maint_until)}</b> gacha.</div><div class="row" style="margin-top:8px"><button class="btn ok" id="maintOff">Hozir qayta yoqish</button></div>`:`<div class="mut">Belgilangan muddatda foydalanuvchilar botdan va ilovadan foydalana olmaydi, ularga quyidagi xabar chiqadi. Admin uchun ishlayveradi.</div>`}
+        <textarea id="mtT" placeholder="Xabar matni" style="min-height:60px;margin-top:8px">${esc(S.maint_text||"Bot va ilovada texnik ishlar olib borilmoqda.")}</textarea>
+        <div class="row" style="margin-top:8px"><input type="number" id="mtD" min="0" placeholder="kun" style="width:90px"><span class="mut">kun</span><input type="number" id="mtH" min="0" placeholder="soat" style="width:90px"><span class="mut">soat</span><button class="btn no" id="maintOn">To‘xtatish</button></div></div>
+      <div class="card"><h3>💳 To‘lov rekvizitlari</h3><div class="mut">Pullik tarif tanlanganda foydalanuvchiga ko‘rsatiladi (bepul davrda va 0 so‘mlik tarifda ko‘rsatilmaydi).</div>
+        <div class="tars" style="margin-top:8px"><input id="pcN" placeholder="Karta raqami (masalan 8600 1234 5678 9012)" value="${esc(P.card)}"><input id="pcO" placeholder="Karta egasi F.I.Sh." value="${esc(P.owner)}"><input id="pcP" placeholder="Admin telefon raqami" value="${esc(P.phone)}"></div>
+        <div class="row" style="margin-top:8px"><button class="btn pri" id="spc">Saqlash</button></div>
+        <h3 style="margin-top:12px">QR kod</h3>${P.qr?`<img src="pay/qr?t=${Date.now()}" style="max-width:180px;border-radius:10px;border:1px solid var(--line);display:block;margin-bottom:8px"><button class="btn" id="qrDel">QR kodni o‘chirish</button>`:`<div class="mut">QR kod yuklanmagan.</div>`}
+        <div class="row" style="margin-top:8px"><input type="file" id="qrF" accept="image/*" style="flex:1"><button class="btn pri" id="qrUp">QR kodni yuklash</button></div></div>
+      <div class="card"><h3>Obuna tariflari</h3><div class="mut" style="margin-bottom:8px">Muddat oy va/yoki kunlarda. Narx 0 bo‘lsa, chek talab qilinmaydi (so‘rov admin tasdig‘iga boradi). Tasdiqlashda istalgan muddat va summani (chegirma) tanlash mumkin.</div>
         <div class="tars">${TAR.map((x,i)=>`<div class="row tr"><input data-tf="name" data-i="${i}" value="${esc(x.name)}" placeholder="Nomi (masalan: 1 oylik obuna)" style="flex:2;min-width:150px">
-          <label class="row" style="gap:4px;flex:none"><input data-tf="months" data-i="${i}" type="number" min="1" max="120" value="${x.months}" style="width:70px"><span class="mut">oy</span></label>
+          <label class="row" style="gap:4px;flex:none"><input data-tf="months" data-i="${i}" type="number" min="0" max="120" value="${x.months||0}"><span class="mut">oy</span></label>
+          <label class="row" style="gap:4px;flex:none"><input data-tf="days" data-i="${i}" type="number" min="0" max="3650" value="${x.days||0}"><span class="mut">kun</span></label>
           <label class="row" style="gap:4px;flex:none"><input data-tf="price" data-i="${i}" type="number" min="0" step="1000" value="${x.price}"><span class="mut">so‘m</span></label>
           <button class="btn" data-tdel="${i}" title="O‘chirish">✕</button></div>`).join("")}</div>
-        <div class="row" style="margin-top:8px"><button class="btn" data-tadd="1">+ Oylik</button><button class="btn" data-tadd="3">+ 3 oylik</button><button class="btn" data-tadd="6">+ 6 oylik</button><button class="btn" data-tadd="12">+ Yillik</button>
+        <div class="row" style="margin-top:8px"><button class="btn" data-tadd="0:7">+ 7 kunlik</button><button class="btn" data-tadd="1:0">+ Oylik</button><button class="btn" data-tadd="3:0">+ 3 oylik</button><button class="btn" data-tadd="12:0">+ Yillik</button>
           <button class="btn pri" id="stf" style="margin-left:auto">Tariflarni saqlash</button></div></div>
-      <div class="card"><h3>To‘lov yo‘riqnomasi</h3><div class="mut">Pullik tarif tanlanganda ko‘rsatiladi: karta raqami, egasi, chekni biriktirish tartibi.</div>
+      <div class="card"><h3>To‘lov yo‘riqnomasi (qo‘shimcha matn)</h3>
         <textarea id="pt">${esc(S.paytext)}</textarea><div class="row" style="margin-top:8px"><button class="btn pri" id="spt">Saqlash</button></div></div>
       <div class="card"><h3>Tasdiqlash tartibi</h3><label class="row cb"><input type="checkbox" id="ao" style="width:auto" ${S.auto_open?"checked":""}> So‘rov kelishi bilan avtomatik ochilsin (admin tasdig‘isiz)</label>
         <div class="mut">Belgilanmagan bo‘lsa (tavsiya etiladi), to‘liq kirish faqat admin “So‘rovlar / cheklar” bo‘limida tasdiqlagandan keyin ochiladi.</div></div>`;
+    }
+    if(TAB==="fb"){
+      const F=await api("feedback");
+      v.innerHTML=`<div class="card list">${F.map(f=>`<div class="it"><div class="row" style="justify-content:space-between"><b>#${f.id} · ${esc(f.name||"—")}</b><span class="mut">${dt(f.t)} · ${f.src==="app"?"ilova":"bot"}${f.seen?"":' · <span class="pill pending">yangi</span>'}</span></div>
+        <div class="mut">ID ${f.uid} · 📞 ${esc(f.phone||"—")}</div><div style="white-space:pre-wrap;margin:6px 0">${esc(f.text)}</div>
+        ${f.reply?`<div class="mut">↩ Javob (${dt(f.rt)}): ${esc(f.reply)}</div>`:`<div class="row"><input id="fr${f.id}" placeholder="Javob yozish (botda yuboriladi)" style="flex:1;min-width:160px"><button class="btn pri" data-fr="${f.id}">Javob berish</button></div>`}</div>`).join("")||'<div class="empty">Hali fikr yo‘q</div>'}</div>`;
     }
     if(TAB==="bc"){
       v.innerHTML=`<div class="card"><h3>Barcha foydalanuvchilarga xabar (${fmt(S.users)} ta)</h3><textarea id="bt" placeholder="Xabar matni"></textarea>
@@ -131,11 +154,23 @@ document.addEventListener("click",async e=>{
     if(d.rst){RST=d.rst;return render();}
     if(d.ok||d.no){const id=+(d.ok||d.no); let note="";
       if(d.no){ note=($("#nt"+id)||{}).value||""; }
-      let months=null; if(d.ok){ const s=$("#tm"+id); months=s.value==="custom"?+$("#cm"+id).value:+s.value; if(!(months>=1)){toast("Muddatni (oy) kiriting");return;} }
-      const r=await api("receipt_act",{id,act:d.ok?"ok":"no",amount:d.ok?+$("#am"+id).value:null,months,note}); toast(r.ok?(d.ok?"Tasdiqlandi, kirish ochildi":"Rad etildi"):r.msg); return render();}
-    if(d.open||d.close){const id=+(d.open||d.close); const months=d.open?+($("#gm"+id)||{}).value||0:0;
-      await api("user_set",{id,paid:!!d.open,months}); toast(d.open?"To‘liq kirish berildi":"Yopildi"); return render();}
-    if(d.tadd){TAR.push({id:"",name:(+d.tadd===12?"1 yillik obuna":d.tadd+" oylik obuna"),months:+d.tadd,price:0}); return render();}
+      let months=null, days=null; if(d.ok){ const s=$("#tm"+id); if(s.value==="custom"){ months=+$("#cm"+id).value||0; days=+$("#cd"+id).value||0; } else [months,days]=s.value.split(":").map(Number);
+        if(!(months>0||days>0)){toast("Muddatni (oy yoki kun) kiriting");return;} }
+      const r=await api("receipt_act",{id,act:d.ok?"ok":"no",amount:d.ok?+$("#am"+id).value:null,months,days,note}); toast(r.ok?(d.ok?"Tasdiqlandi, kirish ochildi":"Rad etildi"):r.msg); return render();}
+    if(d.open||d.close){const id=+(d.open||d.close); const [months,days]=d.open?(($("#gm"+id)||{}).value||"0:0").split(":").map(Number):[0,0];
+      await api("user_set",{id,paid:!!d.open,months,days}); toast(d.open?"To‘liq kirish berildi":"Yopildi"); return render();}
+    if(d.tadd){const [m,dd_]=d.tadd.split(":").map(Number); TAR.push({id:"",name:per(m,dd_)+" obuna",months:m,days:dd_,price:0}); return render();}
+    if(d.fr){const txt=($("#fr"+d.fr)||{}).value||""; if(!txt.trim()) return; const r=await api("fb_reply",{id:+d.fr,text:txt}); toast(r.ok?"Javob yuborildi":r.msg); return render();}
+    if(b.id==="freeOn"){const m=+$("#frM").value||0, dd_=+$("#frD").value||0; if(!(m||dd_)){toast("Muddatni kiriting");return;} await api("settings",{free:{months:m,days:dd_}}); toast("Bepul davr yoqildi"); return render();}
+    if(b.id==="freeOff"){await api("settings",{free:{off:true}}); toast("To‘xtatildi"); return render();}
+    if(b.id==="maintOn"){const dd_=+$("#mtD").value||0, h=+$("#mtH").value||0; if(!(dd_||h)){toast("Muddatni kiriting");return;}
+      const ok=await new Promise(res=>{ if(W&&W.showConfirm) W.showConfirm("Bot va ilova foydalanuvchilar uchun to‘xtatilsinmi?",res); else res(true); }); if(!ok) return;
+      await api("settings",{maint_text:$("#mtT").value,maint:{days:dd_,hours:h}}); toast("To‘xtatildi"); return render();}
+    if(b.id==="maintOff"){await api("settings",{maint:{off:true}}); toast("Qayta yoqildi"); return render();}
+    if(b.id==="spc"){await api("settings",{card_number:$("#pcN").value,card_owner:$("#pcO").value,admin_phone:$("#pcP").value}); toast("Saqlandi"); return render();}
+    if(b.id==="qrDel"){await api("settings",{qr_off:true}); toast("O‘chirildi"); return render();}
+    if(b.id==="qrUp"){const f=$("#qrF").files[0]; if(!f){toast("Rasmni tanlang");return;} const fd=new FormData(); fd.append("init",INIT); fd.append("file",f);
+      const r=await (await fetch("admin/upload_qr",{method:"POST",body:fd})).json(); toast(r.ok?"QR kod yuklandi":r.error); return render();}
     if(d.tdel){TAR.splice(+d.tdel,1); return render();}
     if(d.pg){UOFF=Math.max(0,UOFF+50*+d.pg);return render();}
     if(b.id==="stf"){const r=await api("settings",{tariffs:TAR}); if(r.ok===false){toast(r.msg);return;} TAR=null; toast("Tariflar saqlandi"); return render();}
@@ -148,7 +183,7 @@ document.addEventListener("change",async e=>{
   if(e.target.id==="ao"){await api("settings",{auto_open:e.target.checked});toast("Saqlandi");}
   if(e.target.id==="uf"){UF=e.target.value;UOFF=0;render();}
   if(e.target.id&&e.target.id.startsWith("tm")){const id=e.target.dataset.rid, o=e.target.selectedOptions[0], c=$("#cm"+id);
-    c.style.display=e.target.value==="custom"?"":"none"; if(o&&o.dataset.price!=null) $("#am"+id).value=o.dataset.price;}
+    $("#cw"+id).style.display=e.target.value==="custom"?"":"none"; if(o&&o.dataset.price!=null) $("#am"+id).value=o.dataset.price;}
 });
 let qt; document.addEventListener("input",e=>{ if(e.target.dataset&&e.target.dataset.tf){const x=TAR[+e.target.dataset.i]; x[e.target.dataset.tf]=e.target.type==="number"?+e.target.value:e.target.value; return;} if(e.target.id==="uq"){clearTimeout(qt);qt=setTimeout(()=>{UQ=e.target.value;UOFF=0;render().then(()=>{const i=$("#uq");i.focus();i.setSelectionRange(99,99);});},400);} });
 function loginView(msg){ $("#v").innerHTML=`<div class="card" style="max-width:380px;margin:30px auto"><h3>Admin panelga kirish</h3>
