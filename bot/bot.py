@@ -545,9 +545,10 @@ async def cb_bt(c: CallbackQuery, bot: Bot):
     if t_["price"] <= 0:
         cur = db.execute("insert into receipts(uid,file_id,ftype,kind,amount,status,t,tariff,months,days,phone) values(?,?,?,?,?,?,?,?,?,?,?)",
                          (u["id"], "", "", "bot", 0, "pending", int(time.time()), t_["id"], t_["months"], t_["days"], u.get("phone"))); db.commit()
-        if kv("auto_open") == "1": await receipt_act(bot, cur.lastrowid, "ok", 0); return
-        await send_request_to_admins(bot, cur.lastrowid)
-        return await c.message.answer(T(u, "✅ So‘rovingiz adminga yuborildi. Admin tasdiqlagach to‘liq kirish ochiladi va sizga xabar keladi."))
+        # 0 so'mlik tarif — admin tasdig'isiz darhol ochiladi
+        await receipt_act(bot, cur.lastrowid, "ok", 0)
+        await notify_admins(bot, f"🆓 Bepul tarif avtomatik ochildi: {html.escape(u.get('name') or '—')} (<code>{u['id']}</code>) — {html.escape(t_['name'])}")
+        return
     BUY_T[u["id"]] = t_["id"]
     txt = f"🗓 <b>{html.escape(t_['name'])}</b> — {fmt_sum(t_['price'])} so‘m\n\n" + (pay_text() + "\n\n" if pay_text() else "") + (html.escape(kv("paytext") or "") + "\n\n") + \
           "📎 To‘lov chekini shu yerga yuboring: rasm, skrinshot, PDF yoki istalgan fayl ko‘rinishida."
@@ -839,8 +840,10 @@ def make_web(bot):
             ext = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/heic": ".heic", "application/pdf": ".pdf"}.get(ctype) or (os.path.splitext(fname)[1][:8] if "." in fname else ".bin")
             path = RCPT_DIR / f"{rid}{ext}"; path.write_bytes(data); db.execute("update receipts set path=?, note=? where id=?", (str(path), ctype, rid))
         db.commit()
-        if kv("auto_open") == "1":
-            await receipt_act(bot, rid, "ok", 0); return web.json_response({"ok": True, "auto": True})
+        if kv("auto_open") == "1" or int(t_["price"]) <= 0:   # 0 so'm — admin tasdig'isiz
+            await receipt_act(bot, rid, "ok", 0)
+            if int(t_["price"]) <= 0: await notify_admins(bot, f"🆓 Bepul tarif avtomatik ochildi: {html.escape(u.get('name') or '—')} (<code>{u['id']}</code>) — {html.escape(t_['name'])}")
+            return web.json_response({"ok": True, "auto": True})
         await send_request_to_admins(bot, rid, data=data, fname=fname, ctype=ctype)
         return web.json_response({"ok": True})
     async def api_state(req):

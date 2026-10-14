@@ -908,10 +908,10 @@ function viewBuy(){
       ${MINI.paytext?`<div class="note">${TE(MINI.paytext)}</div>`:""}
       ${P.phone?`<div class="hint">${TE("Savollar bo‘yicha admin: ")}<a href="tel:${esc(P.phone.replace(/[^\d+]/g,""))}">${esc(P.phone)}</a></div>`:""}
       <label class="drop ${BUY.file?"has":""}"><input type="file" id="bFile" accept="*/*"><span class="dico">📎</span><b>${TE(BUY.file?"Chek tanlandi":"To‘lov chekini tanlang")}</b><small>${BUY.file?esc(BUY.file.name):TE("rasm, skrinshot, PDF yoki istalgan fayl · 10 MB gacha")}</small></label></div>`
-      :`<p class="hint" style="margin:0">${TE("Bu muddat bepul — chek talab qilinmaydi. So‘rov adminga tasdiqlash uchun yuboriladi.")}</p>`}
+      :`<p class="hint" style="margin:0">${TE("Bu muddat bepul — chek va admin tasdig‘i talab qilinmaydi, to‘liq kirish darhol ochiladi.")}</p>`}
     ${BUY.err?`<div class="err">${TE(BUY.err)}</div>`:""}
-    <button class="btn primary" id="bSend" ${BUY.busy?"disabled":""}>${TE(BUY.busy?"Yuborilmoqda…":"Adminga tasdiqlash uchun yuborish")}</button>
-    <p class="hint" style="margin:0;font-size:11px">${TE("So‘rov yuborish orqali foydalanish shartlari va ommaviy oferta (to‘lovni qaytarish tartibi bilan) qabul qilingan hisoblanadi.")}</p>`; }
+    <button class="btn primary" id="bSend" ${BUY.busy?"disabled":""}>${TE(BUY.busy?"Yuborilmoqda…":(paid?"Adminga tasdiqlash uchun yuborish":"🔓 Bepul ochish"))}</button>
+    <p class="hint" style="margin:0;font-size:11px">${TE((paid?"So‘rov yuborish":"Davom etish")+" orqali foydalanish shartlari va ommaviy oferta (to‘lovni qaytarish tartibi bilan) qabul qilingan hisoblanadi.")}</p>`; }
   return `<div class="modal" role="dialog" aria-modal="true"><div class="mbox buybox"><button class="mx" id="bX" aria-label="Yopish">✕</button>
     <h2>${TE("🔓 To‘liq kirish — barcha savol-javoblar")}</h2>${body}</div></div>`;
 }
@@ -932,7 +932,7 @@ function bindBuy(){
     if(file&&file.size>10*1024*1024){BUY.err="Fayl hajmi 10 MB dan oshmasin.";return render();}
     BUY.busy=true;BUY.err="";render();
     const j=await miniPost("api/request",{tariff:t.id,file});
-    BUY.busy=false; if(j.ok){BUY.step="sent"; MINI.pending=true;} else if(j.need_channel){MINI.member=false; BUY.step="chan"; BUY.err="";} else BUY.err=j.error||"Yuborib bo‘lmadi.";
+    BUY.busy=false; if(j.ok&&j.auto){ location.reload(); return; } if(j.ok){BUY.step="sent"; MINI.pending=true;} else if(j.need_channel){MINI.member=false; BUY.step="chan"; BUY.err="";} else BUY.err=j.error||"Yuborib bo‘lmadi.";
     render(); });
 }
 let FB=null; // {text, busy, err, sent}

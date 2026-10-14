@@ -10,7 +10,7 @@ Tahrir sanasi: 2026-yil 15-oktabr
 ## 2. Xizmat mazmuni
 2.1. Xizmat huquqshunoslik fanlari bo‘yicha o‘quv savol-javoblari bilan mustaqil ishlash imkonini beradi: “Davlat va huquq asoslari” darsliklari (8–11-sinflar) va qonunchilik hujjatlari asosida tuzilgan savol-javob kartochkalari, izohlar va o‘zlashtirish statistikasi.
 2.2. Xizmat o‘quv-yordamchi vosita hisoblanadi. U rasmiy huquqiy maslahat, rasmiy test yoki imtihon materiali, normativ-huquqiy hujjatning rasmiy matni emas. Normativ-huquqiy hujjatlarning rasmiy matnlari Qonunchilik ma’lumotlari milliy bazasida (lex.uz) e’lon qilinadi.
-2.3. Xizmatda demo kirish (har bir mavzu va hujjatdan cheklangan miqdordagi savollar) va to‘liq kirish (barcha savol-javoblar) mavjud. To‘liq kirish tanlangan tarif muddatiga Ijrochi tasdiqlaganidan keyin ochiladi. Ijrochi muayyan muddatga barcha foydalanuvchilar uchun bepul kirish e’lon qilishi mumkin.
+2.3. Xizmatda demo kirish (har bir mavzu va hujjatdan cheklangan miqdordagi savollar) va to‘liq kirish (barcha savol-javoblar) mavjud. To‘liq kirish tanlangan tarif muddatiga Ijrochi tasdiqlaganidan keyin ochiladi; bepul (0 so‘mlik) tariflarda va bepul davrda kirish tasdiqsiz, darhol ochiladi. Ijrochi muayyan muddatga barcha foydalanuvchilar uchun bepul kirish e’lon qilishi mumkin.
 2.4. Xizmatga kirish uchun foydalanuvchi o‘z telefon raqamini Telegram orqali yuboradi.
 
 ## 3. Sun’iy intellekt va xatoliklar to‘g‘risida ogohlantirish
