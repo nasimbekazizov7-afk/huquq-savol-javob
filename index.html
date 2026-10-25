@@ -276,7 +276,7 @@ h3{font-size:15px;margin:0 0 6px}
 .tblocks{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;gap:6px;margin:12px 0 0}
 .tblk{--c:#0f7a5c;border:2px solid var(--c);background:color-mix(in srgb,var(--c) 8%,var(--surface));color:var(--c);border-radius:14px;padding:12px 10px;cursor:pointer;display:flex;flex-direction:column;gap:2px;text-align:left}
 .tblk b{font-size:16px;line-height:1.25}.tblk small{font-size:12px;font-weight:600;opacity:.85}
-.tblk.tb-q{--c:#9b2c3a}
+.tblk.tb-q{--c:#9b2c3a}.tblocks.one{grid-template-columns:1fr}
 .tblk[aria-pressed="true"]{background:var(--c);color:#fff;box-shadow:0 4px 12px color-mix(in srgb,var(--c) 30%,transparent)}
 .tarrow{align-self:center;font-size:22px;color:var(--muted);font-weight:700}
 .tlist{border:2px solid #0f7a5c;border-top-width:6px;border-radius:0 0 14px 14px;padding:8px;margin-top:-2px;background:color-mix(in srgb,#0f7a5c 4%,var(--surface))}
@@ -418,8 +418,8 @@ const srcChapters = s => s.chapters.map(id=>CHMAP[id]).filter(Boolean);
 const srcKeys = s => srcChapters(s).flatMap(c=>c.lessons).flatMap(l=>Object.keys(l.sections).map(k=>l.id+":"+k));
 const SRC_OF_L = {}; SOURCES.forEach(s=>srcChapters(s).forEach(c=>c.lessons.forEach(l=>SRC_OF_L[l.id]=s)));
 const isLaw = s => !!s && s.type==="qonun";
-const srcName = s => s ? (isLaw(s) ? s.title : "“"+s.title+"”"+(s.grade?" · "+s.grade+" darsligi asosida":"")) : "";
-const srcCite = s => s ? (isLaw(s) ? s.title : "“"+s.title+"”"+(s.grade?" · "+s.grade+" darsligi":"")) : "";
+const srcName = s => s ? (isLaw(s) ? s.title : s.lang==="ru" ? "«"+s.title+"»"+(s.grade?" · "+s.grade:"") : "“"+s.title+"”"+(s.grade?" · "+s.grade+" darsligi asosida":"")) : "";
+const srcCite = s => s ? (isLaw(s) ? s.title : s.lang==="ru" ? "«"+s.title+"»"+(s.grade?" · "+s.grade:"") : "“"+s.title+"”"+(s.grade?" · "+s.grade+" darsligi":"")) : "";
 const FULL = BANK.full||null;   // demo: har bir bo‘limdagi haqiqiy savollar soni [oddiy, murakkab]
 const KORA = s => isLaw(s) ? ({Kodeks:"Kodeksga ko‘ra",Nizom:"Nizomga ko‘ra",Farmon:"Farmonga ko‘ra",Konstitutsiya:"Konstitutsiyaga ko‘ra"}[s.kind]||"Qonunga ko‘ra") : "Darslikka ko‘ra";
 const IMGS = BANK.images||{};
@@ -468,8 +468,70 @@ function cyr0(str){
   }
   return out+str.slice(last);
 }
-let SCRIPT="lat", LANG="uz";
-const T = s => SCRIPT==="cyr" ? cyr(String(s)) : String(s);
+/* ---------- Русский интерфейс: перевод узбекских строк интерфейса (длинные фразы заменяются первыми) ---------- */
+const RU_UI={
+"Onlayn savol-javob platformasi":"Онлайн-платформа вопросов и ответов","(Huquqshunoslik fanlari bo‘yicha)":"(по юридическим дисциплинам)",
+"ta savol tanlandi":"вопросов выбрано","ta savol beriladi (":"вопросов будет задано (из ","tadan)":")",
+" ta mavzu · ":" тем · ","Aralash":"Смешанный","Oddiy":"Простой","Murakkab":"Сложный","murakkab":"сложный",
+"oddiy matn ko‘rinishida":"в виде простого текста","vaqt cheklanmagan":"время не ограничено","Vaqt cheklanmagan":"Время не ограничено"," soniya":" сек.",
+"Ko‘rish":"Просмотр","Boshlash":"Начать","1. Manbalar":"1. Источники","2. Ko‘rinish":"2. Вид","3. Savollar soni":"3. Количество вопросов",
+"4. Qiyinlik darajasi":"4. Уровень сложности","5. O‘ylash vaqti (har bir savolga)":"5. Время на обдумывание (на каждый вопрос)",
+"Savol-javob kartochkasi tarzida":"В виде карточек","Savol-javobi oddiy matn ko‘rinishida":"В виде простого текста",
+"Belgilangan mavzular savollari javoblari bilan bitta sahifada ochiladi.":"Вопросы отмеченных тем откроются вместе с ответами на одной странице.",
+"Hammasi":"Все","Cheklanmagan":"Без ограничения","30 s":"30 с","1 daq":"1 мин","boshqa":"другое","soniya":"сек.",
+"barcha darsliklar va qonunchilik hujjatlaridan savol-javob":"вопросы и ответы по всем учебникам","Barchasi — ":"Все — ","Barchasi":"Все",
+"✓ Hammasini belgilash":"✓ Отметить всё","✕ Barcha belgilarni tozalash":"✕ Снять все отметки","✕ Belgilarni tozalash":"✕ Снять отметки",
+"📘 Darsliklar (":"📘 Учебники (","⚖️ Qonunchilik hujjatlari (":"⚖️ Нормативные акты (",
+" ta darslik":" учебника"," ta qonunchilik hujjati":" нормативных актов"," ta)":")"," savol":" вопр.",
+"Darslik":"Учебник","Mundarija — mavzularni belgilang":"Оглавление — отметьте темы","Butun darslik mavzularidan savol-javob":"Вопросы по всем темам учебника",
+"Belgini tozalash":"Снять отметки","Bo‘limlarni ochish":"Открыть разделы","Bo‘limlarni yopish":"Скрыть разделы","Butun bobni belgilash":"Отметить всю главу",
+"Belgilash":"Отметить","savollar tayyorlanmoqda":"вопросы готовятся","To‘liq kirishda ochiladi":"Откроется при полном доступе","ochiq":"открыто",
+"Mualliflar:":"Авторы:","Savollar ushbu darslikni yaxshi o‘zlashtirish uchun faqat shu darslik asosida tuzilgan. Har bir javob va tushuntirish darslikka ko‘ra beriladi.":"Вопросы составлены только на основе этого учебника, чтобы хорошо его усвоить. Каждый ответ и пояснение даются по учебнику.",
+"O‘zlashtirish statistikasi":"Статистика усвоения","ko‘rilgan ":"просмотрено "," ta · bildim ":" · знаю ",
+"💬 Fikr bildirish":"💬 Оставить отзыв","taklif, fikr yoki xato haqida yozing":"напишите предложение, мнение или об ошибке",
+"📄 Foydalanish shartlari":"📄 Условия использования","ommaviy oferta va qoidalar":"публичная оферта и правила",
+"← Mundarija":"← Оглавление","Yakunlash":"Завершить","Javobni ko‘rish":"Показать ответ","Vaqt tugadi · Javob":"Время вышло · Ответ","Javob":"Ответ",
+"Manba: ":"Источник: ","Darslikka ko‘ra":"По учебнику","darsligi asosida":"(на основе учебника)","darsligi":"(учебник)","-bet":" стр.","-betlar":" стр.","-darslar":" уроки",
+"Shu faktdan boshqa savol":"Другой вопрос по этому факту","Bilmadim":"Не знаю","Qisman":"Частично","Bildim":"Знаю",
+"← Oldingi savol":"← Предыдущий","Keyingi savol →":"Следующий →","Barcha savollar: ":"Все вопросы: ","raqamni bosib qayta ishlang":"нажмите на номер, чтобы повторить",
+"jami ":"всего ","bildim":"знаю","qisman":"частично","bilmadim":"не знаю","hali ishlanmagan":"ещё не решён","Takror":"Повтор","oldin “bilmadim”: ":"ранее «не знаю»: ",
+"Pauza":"Пауза","Davom etish":"Продолжить","Davom":"Продолжить","AI varianti":"Вариант ИИ",
+"Sessiya natijasi: ":"Результат сессии: ","javob":"ответов","Bilmagan savollaringiz keyingi urinishlarda birinchi bo‘lib chiqadi. ✕ tugmasini bossangiz, yangi sessiya darhol boshlanadi.":"Вопросы, на которые вы не знали ответа, появятся первыми в следующих попытках. Нажмите ✕ — новая сессия начнётся сразу.",
+"Bilmaganlarimni qayta ishlash (":"Повторить незнакомые (","Mundarijaga qaytish":"Вернуться к оглавлению",
+"Kartochka tarzida ishlash":"Работать в виде карточек","ta savol javoblari bilan":"вопросов с ответами","Belgilangan mavzuda savol yo‘q.":"В отмеченных темах нет вопросов.",
+"← Savol-javoblar":"← Вопросы и ответы","ko‘rilgan savollar":"просмотрено вопросов","bildim ulushi":"доля «знаю»","jami “bilmadim”":"всего «не знаю»","takrorga navbatda":"в очереди на повтор",
+"Mavzular bo‘yicha o‘zlashtirish":"Усвоение по темам","Manba va bobni bosib oching; mavzuni bosing — darhol shu mavzudan savol-javob boshlanadi. Chiziq: yashil — bildim, sariq — qisman, qizil — bilmadim.":"Откройте источник и главу; нажмите на тему — сразу начнутся вопросы по ней. Полоса: зелёный — знаю, жёлтый — частично, красный — не знаю.",
+"Qonunchilik hujjatlari":"Нормативные акты","Darsliklar":"Учебники","Bu bo‘limda savol yo‘q.":"В этом разделе нет вопросов.","Shu mavzudan savol-javob":"Вопросы по этой теме",
+"butun ":"вся ","bobdan":"глава","bo‘limdan":"раздел"," savol-javob ›":" — вопросы ›",
+"Eng ko‘p qiynagan savollar":"Самые трудные вопросы","Shularni mashq qilish":"Потренировать их","Hali “bilmadim” deb belgilangan savol yo‘q.":"Пока нет вопросов с отметкой «не знаю».",
+"Sessiyalar tarixi":"История сессий","Birinchi sessiyani “Mashq” bo‘limida boshlang.":"Начните первую сессию.","Statistikani tozalash":"Очистить статистику",
+"Barcha natijalar, AI savollari va tarix o‘chadi. Rostdan ham?":"Все результаты и история будут удалены. Вы уверены?","Mundarijada belgilangan mavzular natijalari o‘chadi. Rostdan ham?":"Результаты отмеченных тем будут удалены. Вы уверены?",
+"Ha, tozalash":"Да, очистить","Bekor qilish":"Отмена","Belgilangan mavzular natijalarini":"Результаты отмеченных тем","Hammasini":"Все","Natijalar shu brauzerda saqlanadi.":"Результаты сохраняются в этом браузере.",
+"⚠️ Savol-javoblar sun’iy intellekt yordamida tuzilgan — xatolar bo‘lishi mumkin. Muhim ma’lumotni rasmiy manbadan (lex.uz) tekshiring.":"⚠️ Вопросы и ответы составлены с помощью искусственного интеллекта — возможны ошибки. Важную информацию проверяйте по официальному источнику (lex.uz).",
+"🎁 Hozir barcha savol-javoblar hamma uchun bepul: ":"🎁 Сейчас все вопросы бесплатны для всех: до "," gacha":"","✅ To‘liq kirish: ":"✅ Полный доступ: до ","✅ To‘liq kirish ochiq":"✅ Полный доступ открыт",
+"🆓 Demo: har bir darslik mavzusidan va har bir qonunchilik hujjatidan ":"🆓 Демо: из каждой темы учебника открыто по "," tadan savol ochiq. Jami: ":" вопросов. Всего: "," ta savol-javob.":" вопросов и ответов.",
+"⏳ So‘rovingiz admin tomonidan ko‘rib chiqilmoqda.":"⏳ Ваша заявка рассматривается администратором.","🔓 To‘liq kirish — barcha savol-javoblar":"🔓 Полный доступ — все вопросы и ответы",
+"1-qadam. To‘liq kirish uchun avval kanalimizga obuna bo‘ling:":"Шаг 1. Для полного доступа сначала подпишитесь на наш канал:","📢 Kanalga o‘tish":"📢 Перейти в канал","✅ Obuna bo‘ldim — tekshirish":"✅ Я подписался — проверить",
+"⏳ Avvalgi so‘rovingiz admin tomonidan ko‘rib chiqilmoqda. Tasdiqlangach botda xabar keladi va ilovani qayta ochganingizda barcha savol-javoblar ochiladi.":"⏳ Ваша предыдущая заявка рассматривается администратором. После подтверждения придёт сообщение в боте, и при повторном открытии приложения все вопросы будут доступны.",
+"Yangi so‘rov yuborish":"Отправить новую заявку","✅ So‘rovingiz adminga yuborildi. Admin tasdiqlagach botda xabar keladi; ilovani qayta ochsangiz, barcha savol-javoblar ochiq bo‘ladi.":"✅ Заявка отправлена администратору. После подтверждения придёт сообщение в боте; при повторном открытии приложения все вопросы будут доступны.",
+"Yopish":"Закрыть","Obuna muddatini tanlang":"Выберите срок подписки","bepul":"бесплатно"," so‘m":" сум","so‘m":"сум","Karta raqami":"Номер карты","Savollar bo‘yicha admin: ":"Администратор по вопросам: ",
+"Chek tanlandi":"Чек выбран","To‘lov chekini tanlang":"Выберите чек об оплате","rasm, skrinshot, PDF yoki istalgan fayl · 10 MB gacha":"фото, скриншот, PDF или любой файл · до 10 МБ",
+"Bu muddat bepul — chek va admin tasdig‘i talab qilinmaydi, to‘liq kirish darhol ochiladi.":"Этот срок бесплатный — чек и подтверждение не нужны, полный доступ откроется сразу.",
+"Yuborilmoqda…":"Отправка…","Adminga tasdiqlash uchun yuborish":"Отправить администратору на подтверждение","🔓 Bepul ochish":"🔓 Открыть бесплатно",
+"So‘rov yuborish":"Отправляя заявку","Davom etish orqali":"Продолжая"," orqali foydalanish shartlari va ommaviy oferta (to‘lovni qaytarish tartibi bilan) qabul qilingan hisoblanadi.":", вы принимаете условия использования и публичную оферту (включая порядок возврата оплаты).",
+"Taklif, fikr yoki savol-javobdagi xato haqida yozing (xato bo‘lsa, savol matnini ham ko‘rsating).":"Напишите предложение, мнение или об ошибке в вопросе (при ошибке укажите текст вопроса).",
+"Yuborish":"Отправить","✅ Rahmat! Fikringiz adminga yuborildi. Javob bo‘lsa, botda keladi.":"✅ Спасибо! Ваш отзыв отправлен администратору. Ответ придёт в боте.",
+"Matn bo‘sh":"Текст пустой","Yuborib bo‘lmadi":"Не удалось отправить","Telefon raqamini to‘liq kiriting.":"Введите номер полностью.","To‘lov chekini (rasm yoki PDF) biriktiring.":"Прикрепите чек об оплате.",
+"Fayl hajmi 10 MB dan oshmasin.":"Размер файла — не более 10 МБ.","Yuborib bo‘lmadi.":"Не удалось отправить.","Internet aloqasini tekshiring.":"Проверьте подключение к интернету.",
+"Hali kanalga obuna bo‘lmagansiz. Obuna bo‘lib, qayta tekshiring.":"Вы ещё не подписались на канал. Подпишитесь и проверьте снова.",
+"Qamrov xaritasi":"Карта охвата","Dars":"Урок"," ta":"","savol":"вопр."," oylik obuna":"-месячная подписка"," yillik obuna":"-годичная подписка"," kun obuna":"-дневная подписка"," oy obuna":" мес. — подписка"," oy":" мес."," yil":" г."," kun":" дн.",
+"Tanlangan summani yuqoridagi karta raqamiga (yoki QR kod orqali) o‘tkazing va to‘lov chekini biriktiring. Admin tasdiqlagach to‘liq kirish ochiladi.":"Переведите выбранную сумму на указанную выше карту (или по QR-коду) и прикрепите чек об оплате. После подтверждения администратором откроется полный доступ."
+};
+const RU_KEYS=Object.keys(RU_UI).sort((a,b)=>b.length-a.length);
+function ruT(s){ s=String(s); if(RU_UI[s]!==undefined) return RU_UI[s]; if(!/[A-Za-z‘’]/.test(s)) return s;
+  let o=s; for(const k of RU_KEYS){ if(o.indexOf(k)>=0) o=o.split(k).join(RU_UI[k]); } return o; }
+let SCRIPT="lat", LANG=BANK.lang==="ru"?"ru":"uz";
+const T = s => LANG==="ru" ? ruT(s) : SCRIPT==="cyr" ? cyr(String(s)) : String(s);
 const TE = s => esc(T(s));
 
 /* ---------- Saqlash: shaxsiy (db) + brauzer ---------- */
@@ -562,7 +624,7 @@ function render(){
 function _render(){
   document.querySelectorAll("[data-t]").forEach(el=>{ if(!el.dataset.orig) el.dataset.orig=el.textContent; el.textContent=T(el.dataset.orig); });
   const v=$("#view");
-  if(LANG==="ru"&&TAB==="mashq"&&!SES&&!LIST) v.innerHTML=viewRu();
+  if(LANG==="ru"&&BANK.lang!=="ru"&&TAB==="mashq"&&!SES&&!LIST) v.innerHTML=viewRu();
   else if(TAB==="mashq") v.innerHTML = LIST ? viewList() : SES ? viewCard() : viewSetup();
   else if(TAB==="stat") v.innerHTML=`<div class="scrollv">${backBar()+viewStats()}</div>`;
   else v.innerHTML=`<div class="scrollv">${backBar()+viewCoverage()}</div>`;
@@ -644,10 +706,10 @@ function viewSetup(){
     <div class="lbl">${TE("1. Manbalar")}</div>
     <label class="trow allrow">${cbHTML(all,'id="allBook"')}<span class="tt">${TE("Barchasi")}<small>${TE("barcha darsliklar va qonunchilik hujjatlaridan savol-javob")}</small></span>${cntHTML(all)}</label>
     <div class="row selbar"><button class="btn" id="selAll">${TE("✓ Hammasini belgilash")}</button><button class="btn" id="selNone">${TE(MINI?"✕ Belgilarni tozalash":"✕ Barcha belgilarni tozalash")}</button></div>
-    <div class="tblocks">
+    <div class="tblocks ${ofType("qonun").length?"":"one"}">
       <button class="tblk tb-d" data-stype="darslik" aria-pressed="${STYPE==="darslik"}"><b>${TE("📘 Darsliklar ("+ofType("darslik").length+" ta)")}</b><small>${TE(qCnt("darslik")+" savol")}</small></button>
-      <span class="tarrow" aria-hidden="true">⇄</span>
-      <button class="tblk tb-q" data-stype="qonun" aria-pressed="${STYPE==="qonun"}"><b>${TE("⚖️ Qonunchilik hujjatlari ("+ofType("qonun").length+" ta)")}</b><small>${TE(qCnt("qonun")+" savol")}</small></button></div>
+      ${ofType("qonun").length?`<span class="tarrow" aria-hidden="true">⇄</span>
+      <button class="tblk tb-q" data-stype="qonun" aria-pressed="${STYPE==="qonun"}"><b>${TE("⚖️ Qonunchilik hujjatlari ("+ofType("qonun").length+" ta)")}</b><small>${TE(qCnt("qonun")+" savol")}</small></button>`:""}</div>
     <div class="tlist ${STYPE==="qonun"?"tl-q":"tl-d"}">
       ${(()=>{const tb=blockState(ofType(STYPE).flatMap(srcKeys),C,S); return `<label class="trow allrow sm">${cbHTML(tb,`data-stall="${STYPE}"`)}<span class="tt">${TE(STYPE==="qonun"?"Barchasi — "+ofType("qonun").length+" ta qonunchilik hujjati":"Barchasi — "+ofType("darslik").length+" ta darslik")}</span>${cntHTML(tb)}</label>`;})()}
       <div class="stack" style="gap:6px">${ofType(STYPE).map(srcRow).join("")}${slotsHTML(STYPE)}</div></div>
@@ -721,7 +783,7 @@ function cur(){return SES&&qById(SES.list[SES.i].id)}
 
 /* ---------- 2. Karta ---------- */
 // “Tushunmadim” — darslikdagi parcha: manba gaplar va ularning atrofidagi gaplar (o‘sha bo‘lim ichida)
-const HSTOP=new Set("va bilan uchun ham yoki bu shu qaysi qanday nima necha qancha kim kimlar qayerda qachon nechta qilib boʻlib boʻladi hisoblanadi etib deb esa emas mumkin ushbu mazkur oʻzbekiston respublikasi respublikasining respublikasida davlat qonun qonunga koʻra boʻyicha".split(" "));
+const HSTOP=new Set("что как это для при или его она они оно которые который которая также если все был была были быть является этот эта эти того чем где когда кто чего этом этой своей свои свой".split(" ").concat("va bilan uchun ham yoki bu shu qaysi qanday nima necha qancha kim kimlar qayerda qachon nechta qilib boʻlib boʻladi hisoblanadi etib deb esa emas mumkin ushbu mazkur oʻzbekiston respublikasi respublikasining respublikasida davlat qonun qonunga koʻra boʻyicha".split(" ")));
 const normW=w=>w.toLowerCase().replace(/[ʻ‘'`ʼ’]/g,"ʻ");
 const stem=w=>{w=normW(w); return /^\d/.test(w)?w.replace(/[^\d,./]/g,""):w.slice(0,Math.max(4,Math.min(w.length,6)));};
 function hiText(text,ans,qq,isSrc){
@@ -906,10 +968,10 @@ function viewBuy(){
       ${MINI.paytext?`<div class="note">${TE(MINI.paytext)}</div>`:""}
       ${P.phone?`<div class="hint">${TE("Savollar bo‘yicha admin: ")}<a href="tel:${esc(P.phone.replace(/[^\d+]/g,""))}">${esc(P.phone)}</a></div>`:""}
       <label class="drop ${BUY.file?"has":""}"><input type="file" id="bFile" accept="*/*"><span class="dico">📎</span><b>${TE(BUY.file?"Chek tanlandi":"To‘lov chekini tanlang")}</b><small>${BUY.file?esc(BUY.file.name):TE("rasm, skrinshot, PDF yoki istalgan fayl · 10 MB gacha")}</small></label></div>`
-      :`<p class="hint" style="margin:0">${TE("Bu muddat bepul — chek talab qilinmaydi. So‘rov adminga tasdiqlash uchun yuboriladi.")}</p>`}
+      :`<p class="hint" style="margin:0">${TE("Bu muddat bepul — chek va admin tasdig‘i talab qilinmaydi, to‘liq kirish darhol ochiladi.")}</p>`}
     ${BUY.err?`<div class="err">${TE(BUY.err)}</div>`:""}
-    <button class="btn primary" id="bSend" ${BUY.busy?"disabled":""}>${TE(BUY.busy?"Yuborilmoqda…":"Adminga tasdiqlash uchun yuborish")}</button>
-    <p class="hint" style="margin:0;font-size:11px">${TE("So‘rov yuborish orqali foydalanish shartlari va ommaviy oferta (to‘lovni qaytarish tartibi bilan) qabul qilingan hisoblanadi.")}</p>`; }
+    <button class="btn primary" id="bSend" ${BUY.busy?"disabled":""}>${TE(BUY.busy?"Yuborilmoqda…":(paid?"Adminga tasdiqlash uchun yuborish":"🔓 Bepul ochish"))}</button>
+    <p class="hint" style="margin:0;font-size:11px">${TE((paid?"So‘rov yuborish":"Davom etish")+" orqali foydalanish shartlari va ommaviy oferta (to‘lovni qaytarish tartibi bilan) qabul qilingan hisoblanadi.")}</p>`; }
   return `<div class="modal" role="dialog" aria-modal="true"><div class="mbox buybox"><button class="mx" id="bX" aria-label="Yopish">✕</button>
     <h2>${TE("🔓 To‘liq kirish — barcha savol-javoblar")}</h2>${body}</div></div>`;
 }
@@ -930,7 +992,7 @@ function bindBuy(){
     if(file&&file.size>10*1024*1024){BUY.err="Fayl hajmi 10 MB dan oshmasin.";return render();}
     BUY.busy=true;BUY.err="";render();
     const j=await miniPost("api/request",{tariff:t.id,file});
-    BUY.busy=false; if(j.ok){BUY.step="sent"; MINI.pending=true;} else if(j.need_channel){MINI.member=false; BUY.step="chan"; BUY.err="";} else BUY.err=j.error||"Yuborib bo‘lmadi.";
+    BUY.busy=false; if(j.ok&&j.auto){ location.reload(); return; } if(j.ok){BUY.step="sent"; MINI.pending=true;} else if(j.need_channel){MINI.member=false; BUY.step="chan"; BUY.err="";} else BUY.err=j.error||"Yuborib bo‘lmadi.";
     render(); });
 }
 let FB=null; // {text, busy, err, sent}
@@ -1174,7 +1236,9 @@ function bind(){
   on("[data-s]",e=>{const id=e.currentTarget.dataset.s; covOpen=covOpen===id?null:id; render();});
   on("[data-s]",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault(); e.currentTarget.click();}},"keydown");
 }
-const setLang=l=>{LANG=l;$("#lnUz").setAttribute("aria-pressed",String(l==="uz"));$("#lnRu").setAttribute("aria-pressed",String(l==="ru"));document.documentElement.lang=l==="ru"?"ru":"uz";$("#scLat").parentNode.style.display=l==="ru"?"none":"";SES=null;LIST=null;TAB="mashq";clearInterval(timerId);render();};
+const setLang=l=>{ if(MINI&&l!==LANG){ try{ document.body.style.opacity=".4"; }catch(e){} miniPost("api/lang",{lang:l}).then(()=>location.reload()); return; }
+  if(!MINI&&BANK.lang==="ru"&&l==="uz"){ location.href="index.html"; return; } if(!MINI&&BANK.lang!=="ru"&&l==="ru"&&window.RU_URL){ location.href=window.RU_URL; return; }
+  LANG=l;$("#lnUz").setAttribute("aria-pressed",String(l==="uz"));$("#lnRu").setAttribute("aria-pressed",String(l==="ru"));document.documentElement.lang=l==="ru"?"ru":"uz";$("#scLat").parentNode.style.display=l==="ru"?"none":"";SES=null;LIST=null;TAB="mashq";clearInterval(timerId);render();};
 $("#lnUz").onclick=()=>setLang("uz"); $("#lnRu").onclick=()=>setLang("ru");
 $("#scLat").onclick=()=>{SCRIPT="lat";$("#scLat").setAttribute("aria-pressed","true");$("#scCyr").setAttribute("aria-pressed","false");try{localStorage.setItem(LS+"-sc","lat")}catch(e){} render();};
 $("#scCyr").onclick=()=>{SCRIPT="cyr";$("#scCyr").setAttribute("aria-pressed","true");$("#scLat").setAttribute("aria-pressed","false");try{localStorage.setItem(LS+"-sc","cyr")}catch(e){} render();};
@@ -1211,6 +1275,7 @@ if(MINI){ document.documentElement.setAttribute("data-theme","light"); if(MINI.c
   const b=$(".brand"); if(b) b.innerHTML="<b>huquqsavoljavob</b>"; document.title="huquqsavoljavob";
   let sp=""; try{sp=(TGW&&TGW.initDataUnsafe&&TGW.initDataUnsafe.start_param)||new URLSearchParams(location.search).get("buy")||"";}catch(e){}
   if(sp) setTimeout(openBuy,50); }
+if(LANG==="ru"){ $("#lnRu").setAttribute("aria-pressed","true"); $("#lnUz").setAttribute("aria-pressed","false"); $("#scLat").parentNode.style.display="none"; document.documentElement.lang="ru"; }
 render();
 })();
 </script>

@@ -63,7 +63,7 @@ create table if not exists pays(id integer primary key autoincrement, uid intege
 create table if not exists feedback(id integer primary key autoincrement, uid integer, text text, t integer, src text, reply text, rt integer, seen integer default 0);
 create table if not exists receipts(id integer primary key autoincrement, uid integer, file_id text, ftype text, kind text, amount integer, status text default 'pending', t integer, dt integer, admin integer, note text);
 """)
-for _tb, _col in (("users", "last integer"), ("users", "until integer"), ("users", "phone text"), ("users", "warned integer"), ("users", "agreed integer"), ("receipts", "days integer"),
+for _tb, _col in (("users", "last integer"), ("users", "until integer"), ("users", "phone text"), ("users", "warned integer"), ("users", "agreed integer"), ("users", "lang text"), ("receipts", "days integer"),
                   ("receipts", "tariff text"), ("receipts", "months integer"), ("receipts", "phone text"), ("receipts", "path text")):
     try: db.execute(f"alter table {_tb} add column {_col}")
     except Exception: pass
@@ -108,14 +108,14 @@ def add_months(ts, m):
     import calendar; day = min(d.day, calendar.monthrange(y, mo)[1])
     return int(d.replace(year=y, month=mo, day=day).timestamp())
 def user(uid, name=""):
-    r = db.execute("select id,name,paid,cyr,until,phone,agreed from users where id=?", (uid,)).fetchone()
+    r = db.execute("select id,name,paid,cyr,until,phone,agreed,lang from users where id=?", (uid,)).fetchone()
     now = int(time.time())
     if not r:
         db.execute("insert into users(id,name,created,last) values(?,?,?,?)", (uid, name, now, now)); db.commit()
-        r = (uid, name, 0, 0, None, None, None)
+        r = (uid, name, 0, 0, None, None, None, None)
     else:
         db.execute("update users set last=?" + (", name=?" if name else "") + " where id=?", ((now, name, uid) if name else (now, uid))); db.commit()
-    return {"id": r[0], "name": r[1], "paid": r[2], "cyr": r[3], "until": r[4], "phone": r[5], "agreed": r[6]}
+    return {"id": r[0], "name": r[1], "paid": r[2], "cyr": r[3], "until": r[4], "phone": r[5], "agreed": r[6], "lang": r[7]}
 def has_full(u): return bool(u["paid"]) or (u.get("until") or 0) > time.time() or u["id"] in ADMINS or free_active()
 
 # ---------------- Lotin → Kirill ----------------
@@ -279,7 +279,7 @@ WELCOME = ("<b>{app}</b> — huquqshunoslik fanlari bo‘yicha onlayn savol-javo
            "• har bir javobga darslik yoki modda matnidan izoh;\n"
            "• darslik, bob, mavzu, modda bo‘yicha tanlash; oddiy/murakkab daraja; o‘ylash vaqti;\n"
            "• o‘zlashtirish statistikasi va bilmagan savollarni qayta ishlash;\n"
-           "• lotin va kirill yozuvi.\n\n"
+           "• lotin va kirill yozuvi; rus tilidagi versiya — darsliklarning asl rus nashrlari asosida (ilovada «Русский» tugmasi).\n\n"
            "🆓 <b>Demo:</b> har bir mavzu va hujjatdan 5 tadan savol.\n"
            "🔓 <b>To‘liq kirish:</b> kanalga obuna + admin tasdig‘i (obuna muddati tarif bo‘yicha).\n"
            "⚠️ Savol-javoblar sun’iy intellekt yordamida tuzilgan — xatolar bo‘lishi mumkin.\n\n"
@@ -723,32 +723,39 @@ APP_TPL = (BASE / "web" / "app.html").read_text(encoding="utf-8")
 LOADER = (BASE / "web" / "loader.html").read_text(encoding="utf-8").replace("@huquqsavoljavob_bot", "@" + BOT_USERNAME)
 ADMIN_HTML = (BASE / "web" / "admin.html").read_text(encoding="utf-8").replace("@huquqsavoljavob_bot", "@" + BOT_USERNAME)
 # Demo: darsliklarning har bir mavzusidan (dars) va har bir qonunchilik hujjatidan DEMO_N tadan savol (matn tartibida)
-_SIDX = {s_["id"]: i for i, s_ in enumerate(PB["sentences"])}
-_SL = {s_["id"]: s_["l"] for s_ in PB["sentences"]}
-_SSEC = {s_["id"]: s_.get("sec") for s_ in PB["sentences"]}
-_CHPB = {c_["id"]: c_ for c_ in PB["chapters"]}
-_L2SRC = {l_["id"]: s_ for s_ in PB["sources"] for cid in s_["chapters"] if cid in _CHPB for l_ in _CHPB[cid]["lessons"]}
-_grp = {}
-for q_ in sorted(PB["questions"], key=lambda q_: (_SIDX.get(q_["src"][0], 10 ** 9), q_["id"])):
-    l_ = _SL.get(q_["src"][0]); s_ = _L2SRC.get(l_)
-    _grp.setdefault(l_ if (s_ and s_["type"] == "darslik") else (s_["id"] if s_ else l_), []).append(q_["id"])
-DEMO.update(qid for g in _grp.values() for qid in g[:DEMO_N])
-FULLC = {}   # bo'lim kaliti (dars:bo'lim) → [oddiy, murakkab] — demo'da haqiqiy sonlarni ko'rsatish uchun
-for q_ in PB["questions"]:
-    sid = q_["src"][0]; k_ = f"{_SL.get(sid)}:{_SSEC.get(sid)}"
-    FULLC.setdefault(k_, [0, 0])[0 if q_.get("lvl") == "o" else 1] += 1
+def bank_meta(pb):
+    sidx = {s_["id"]: i for i, s_ in enumerate(pb["sentences"])}
+    sl = {s_["id"]: s_["l"] for s_ in pb["sentences"]}; ssec = {s_["id"]: s_.get("sec") for s_ in pb["sentences"]}
+    chpb = {c_["id"]: c_ for c_ in pb["chapters"]}
+    l2src = {l_["id"]: s_ for s_ in pb["sources"] for cid in s_["chapters"] if cid in chpb for l_ in chpb[cid]["lessons"]}
+    grp = {}
+    for q_ in sorted(pb["questions"], key=lambda q_: (sidx.get(q_["src"][0], 10 ** 9), q_["id"])):
+        l_ = sl.get(q_["src"][0]); s_ = l2src.get(l_)
+        grp.setdefault(l_ if (s_ and s_["type"] == "darslik") else (s_["id"] if s_ else l_), []).append(q_["id"])
+    demo = {qid for g in grp.values() for qid in g[:DEMO_N]}
+    fullc = {}   # bo'lim kaliti (dars:bo'lim) → [oddiy, murakkab] — demo'da haqiqiy sonlarni ko'rsatish uchun
+    for q_ in pb["questions"]:
+        sid = q_["src"][0]; k_ = f"{sl.get(sid)}:{ssec.get(sid)}"
+        fullc.setdefault(k_, [0, 0])[0 if q_.get("lvl") == "o" else 1] += 1
+    return dict(pb=pb, demo=demo, full=fullc, sl=sl)
+BANKS = {"uz": bank_meta(PB)}
+DEMO.update(BANKS["uz"]["demo"])
+_RU = BASE / "data" / "platform_bank_ru.json"     # rus tilidagi darsliklar (asl rus nashrlari asosida)
+if _RU.exists(): BANKS["ru"] = bank_meta(json.loads(_RU.read_text(encoding="utf-8")))
+def lang_of(u): return u.get("lang") if u.get("lang") in BANKS else "uz"
 _APP_CACHE = {}
-def app_html(level):
-    if level not in _APP_CACHE:
-        full = level >= 2
-        qs = PB["questions"] if full else [q for q in PB["questions"] if q["id"] in DEMO]
-        used_l = {_SL.get(q["src"][0]) for q in qs}
-        sents = PB["sentences"] if full else [s_ for s_ in PB["sentences"] if s_["l"] in used_l]
-        b = dict(PB, questions=qs, sentences=sents)
-        if not full: b["full"] = FULLC
+def app_html(level, lang="uz"):
+    key = (level, lang)
+    if key not in _APP_CACHE:
+        M = BANKS[lang]; pb = M["pb"]; full = level >= 2
+        qs = pb["questions"] if full else [q for q in pb["questions"] if q["id"] in M["demo"]]
+        used_l = {M["sl"].get(q["src"][0]) for q in qs}
+        sents = pb["sentences"] if full else [s_ for s_ in pb["sentences"] if s_["l"] in used_l]
+        b = dict(pb, questions=qs, sentences=sents)
+        if not full: b["full"] = M["full"]
         js = json.dumps(b, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
-        _APP_CACHE[level] = (APP_TPL.replace("__BANK__", js), len(PB["questions"]) - len(qs))
-    return _APP_CACHE[level]
+        _APP_CACHE[key] = (APP_TPL.replace("__BANK__", js), len(pb["questions"]) - len(qs))
+    return _APP_CACHE[key]
 def check_init_data(init_data: str):
     try:
         data = dict(parse_qsl(init_data, keep_blank_values=True)); h = data.pop("hash", "")
@@ -807,13 +814,13 @@ def make_web(bot):
         if maint_active() and not adm: return web.Response(text=gate_page("maint", u), content_type="text/html")
         if not u.get("phone") and not adm: return web.Response(text=gate_page("phone", u), content_type="text/html")
         if not agreed(u) and not adm: return web.Response(text=gate_page("terms", u), content_type="text/html")
-        lv = await level_of(bot, u); html_, locked = app_html(lv)
+        lv = await level_of(bot, u); lang = lang_of(u); html_, locked = app_html(lv, lang)
         pending = bool(db.execute("select 1 from receipts where uid=? and status='pending' limit 1", (u["id"],)).fetchone())
         mem = None if lv >= 2 else await is_member(bot, u["id"])
         mini = json.dumps({"level": lv, "locked": locked, "until": (u["until"] if not u["paid"] and u["id"] not in ADMINS and (u.get("until") or 0) > time.time() else None),
                            "pending": pending, "member": mem is not False, "tariffs": pub_tariffs(), "paytext": kv("paytext"), "pay": pay_info(), "uid": u["id"],
                            "free_until": free_until() if free_active() else None, "cyr": bool(u.get("cyr")),
-                           "channel_url": CHANNEL_URL, "bot_url": "https://t.me/" + BOT_USERNAME, "total": len(PB["questions"]), "demo_n": DEMO_N}, ensure_ascii=False)
+                           "channel_url": CHANNEL_URL, "bot_url": "https://t.me/" + BOT_USERNAME, "total": len(BANKS[lang]["pb"]["questions"]), "demo_n": DEMO_N, "lang": lang, "langs": list(BANKS)}, ensure_ascii=False)
         return web.Response(text=html_.replace("__MINI__", mini.replace("</", "<\\/"), 1), content_type="text/html")
     async def api_check(req):
         form = await req.post(); u = tg_user(form.get("init"))
@@ -851,6 +858,11 @@ def make_web(bot):
         form = await req.post(); u = tg_user(form.get("init"))
         if not u: return web.json_response({}, status=403)
         return web.json_response({"phone": bool(u.get("phone")), "agreed": agreed(u)})
+    async def api_lang(req):
+        form = await req.post(); u = tg_user(form.get("init"))
+        if not u: return web.json_response({}, status=403)
+        lg = form.get("lang") if form.get("lang") in ("uz", "ru") else "uz"
+        db.execute("update users set lang=? where id=?", (lg, u["id"])); db.commit(); return web.json_response({"ok": True, "lang": lg})
     async def api_agree(req):
         form = await req.post(); u = tg_user(form.get("init"))
         if not u: return web.json_response({}, status=403)
@@ -1013,7 +1025,7 @@ def make_web(bot):
     a = web.Application(client_max_size=12 << 20)
     a.router.add_get("/", index); a.router.add_post("/app", app)
     a.router.add_post("/api/check", api_check); a.router.add_post("/api/request", api_request)
-    a.router.add_post("/api/state", api_state); a.router.add_post("/api/agree", api_agree); a.router.add_post("/api/feedback", api_feedback)
+    a.router.add_post("/api/state", api_state); a.router.add_post("/api/agree", api_agree); a.router.add_post("/api/lang", api_lang); a.router.add_post("/api/feedback", api_feedback)
     a.router.add_get("/oferta", oferta); a.router.add_get("/pay/qr", pay_qr); a.router.add_post("/admin/upload_qr", upload_qr)
     a.router.add_get("/admin", admin_page); a.router.add_post("/admin/login", login); a.router.add_post("/admin/api/{act}", api); a.router.add_get("/admin/file/{rid}", file_)
     return a
@@ -1045,7 +1057,8 @@ async def main():
         await bot.set_my_description(f"{APP_NAME} — huquqshunoslik fanlari bo‘yicha onlayn savol-javob platformasi.\n\n📚 {total_text()} dan ortiq savol-javob: “Davlat va huquq asoslari” darsliklari (8–11-sinf) va 35 ta qonunchilik hujjati asosida.\n\n✨ Kartochkalar, darslik/modda matnidan izohlar, mavzu va modda bo‘yicha tanlash, o‘zlashtirish statistikasi, lotin va kirill yozuvi.\n\n🆓 Demo bepul. «Start» ni bosing.")
         await bot.set_my_short_description(f"{total_text()} dan ortiq huquqiy savol-javob: 4 ta darslik va 35 ta qonunchilik hujjati asosida.")
     except Exception as e: logging.warning("description: %s", e)
-    for lv in (0, 2): app_html(lv)   # oldindan tayyorlab qo'yish
+    for lv in (0, 2):
+        for lg in BANKS: app_html(lv, lg)   # oldindan tayyorlab qo'yish
     asyncio.create_task(remind_loop(bot))
     await dp.start_polling(bot)
 
